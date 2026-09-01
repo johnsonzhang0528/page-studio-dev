@@ -23,7 +23,20 @@
     "strategy": "task_type_adaptive",
     "implementation_base": 24,
     "continuation_increment": 4,
-    "maximum": 32
+    "maximum": 32,
+    "complexity_signals": true
+  },
+  "gate_efficiency": {
+    "artifact_hash_fast_pass": true,
+    "difference_first_review": true,
+    "targeted_review_model": "sonnet",
+    "final_regression_model": "opus"
+  },
+  "result_compaction": {
+    "enabled": true,
+    "preserve_raw_log": true,
+    "history_summary_max_chars": 1200,
+    "history_evidence_max_items": 8
   },
   "max_repair_attempts": 3,
   "repair_loops": {

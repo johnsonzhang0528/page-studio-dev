@@ -10,4 +10,5 @@ coverage/
 .ai/logs/
 .ai/autodev.lock/
 .ai/AUTODEV_STOP
+.ai/GATE_CACHE.json
 .ai/*.tmp.*
