@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "enabled": false,
+  "model": "sonnet",
+  "effort": "high",
+  "fallback_model": "sonnet",
+  "stage_models": {
+    "input_analysis": { "model": "sonnet", "effort": "medium" },
+    "requirements": { "model": "sonnet", "effort": "high" },
+    "requirements_gate": { "model": "opus", "effort": "high" },
+    "architecture": { "model": "sonnet", "effort": "high" },
+    "architecture_gate": { "model": "opus", "effort": "high" },
+    "specification": { "model": "sonnet", "effort": "high" },
+    "specification_gate": { "model": "opus", "effort": "high" },
+    "planning": { "model": "sonnet", "effort": "high" },
+    "planning_gate": { "model": "opus", "effort": "high" },
+    "implementation": { "model": "sonnet", "effort": "high" },
+    "implementation_gate": { "model": "opus", "effort": "high" },
+    "qa": { "model": "opus", "effort": "high" }
+  },
+  "max_turns_per_stage": 40,
+  "turn_budget": {
+    "strategy": "task_type_adaptive",
+    "implementation_base": 24,
+    "continuation_increment": 4,
+    "maximum": 32
+  },
+  "max_repair_attempts": 3,
+  "repair_loops": {
+    "max_total_per_gate": 8,
+    "max_hard_total_per_gate": 20,
+    "max_consecutive_no_progress": 3,
+    "max_same_target": 2,
+    "max_target_fraction": 0.4,
+    "targeted_repair": true
+  },
+  "semantic_freeze": {
+    "max_total_attempts": 6,
+    "max_same_artifact_failures": 2,
+    "max_consecutive_no_progress": 2
+  },
+  "quota_retry_minutes": 30,
+  "stage_timeout_minutes": 90,
+  "context_management": {
+    "fresh_session_per_stage": true,
+    "no_session_persistence": true,
+    "resume_same_work_unit": true,
+    "phase_scoped_context": true,
+    "markdown_first": true,
+    "auto_compact_percent": 80
+  },
+  "work_units": {
+    "enabled": true,
+    "post_interrupt_acceptance": true,
+    "max_continuations_per_unit": 3,
+    "max_total_continuations_per_cycle": 8,
+    "max_no_progress_attempts": 2,
+    "max_repair_attempts_per_unit": 2
+  },
+  "workflow_efficiency": {
+    "semantic_freeze_before_render": true,
+    "full_visual_check_final_only": true,
+    "architecture_visual_delivery": "final_only",
+    "adr_admission_required": true,
+    "draft_adr_until_gate": true,
+    "defer_deployment_risks_to_release_gate": true,
+    "context_sync_after_gate_only": true,
+    "skip_runtime_only_git_commits": true
+  },
+  "parallel_execution": {
+    "enabled": true,
+    "max_concurrency": 2,
+    "read_only_gates": true,
+    "isolated_write_worktrees": true,
+    "auto_reduce_on_quota_pressure": true
+  },
+  "auto_commit": false,
+  "auto_checkpoint_commits": true,
+  "git_checkpoint_identity": {
+    "name": "Page Studio Autodev",
+    "email": "autodev@page-studio.local"
+  },
+  "machine_quality_gates": true,
+  "allow_push": false,
+  "allow_deploy": false
+}

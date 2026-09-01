@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project": "__PROJECT_NAME__",
+  "phase": "not_started",
+  "status": "ready",
+  "run_id": null,
+  "attempt": 0,
+  "input_revision": 0,
+  "input_fingerprint": null,
+  "resume_after": null,
+  "last_action": "已從 Page Studio 範本建立專案",
+  "next_action": "開始需求訪談與需求整理",
+  "blocker": null,
+  "updated_at": "__CREATED_AT__",
+  "workflow": "page-autodev",
+  "gates": {},
+  "history": []
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "project": "__PROJECT_NAME__",
+  "tasks": [
+    {
+      "id": "REQ-001",
+      "title": "Define requirements and acceptance criteria",
+      "owner": "requirement",
+      "status": "ready",
+      "depends_on": [],
+      "evidence": []
+    }
+  ]
+}

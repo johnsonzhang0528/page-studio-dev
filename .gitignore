@@ -1,0 +1,30 @@
+# Project workspaces are independent repositories.
+projects/
+
+# Local secrets and service credentials.
+.env
+.env.*
+!.env.example
+*token*
+*secret*
+*.key
+*.pem
+
+# Runtime state, logs, sessions and caches.
+**/.ai/logs/
+**/.ai/autodev.lock
+**/.ai/sessions/
+**/.ai/cache/
+*.log
+*.pid
+*.tmp
+node_modules/
+
+# Historical ad-hoc backups pre-dating Git.
+*.backup-*
+
+# Editor and OS metadata.
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

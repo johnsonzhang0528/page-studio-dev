@@ -1,0 +1,18 @@
+[Unit]
+Description=頁構所 AI Telegram 安全控制服務
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node %h/page-studio-dev/lib/telegram-control.mjs
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=%h/page-studio-dev %h/.local/state/page-autodev %h/.config/systemd/user
+
+[Install]
+WantedBy=default.target

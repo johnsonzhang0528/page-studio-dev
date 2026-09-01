@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+script_path="$(readlink -f "${BASH_SOURCE[0]}")"
+root="$(cd "$(dirname "$script_path")/.." && pwd)"
+exec node "$root/lib/autodev.mjs" "$@"

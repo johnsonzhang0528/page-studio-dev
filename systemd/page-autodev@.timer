@@ -1,0 +1,11 @@
+[Unit]
+Description=Page Studio 專案 %i 全自動續跑計時器
+
+[Timer]
+OnActiveSec=15min
+OnUnitInactiveSec=15min
+Persistent=false
+Unit=page-autodev@%i.service
+
+[Install]
+WantedBy=timers.target

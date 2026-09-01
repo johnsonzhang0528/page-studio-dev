@@ -1,0 +1,9 @@
+* text=auto whitespace=-blank-at-eof
+*.md text whitespace=-trailing-space,-blank-at-eof
+*.svg text whitespace=-blank-at-eof
+*.json text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.sh text eol=lf

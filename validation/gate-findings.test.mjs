@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
+import {loadFindings,upsertGateFindings,transitionFinding,resolveRepairTargets,beginRepair,beginVerification,finishVerification,needsReflection,validateReflection} from './gate-findings.mjs';
+const project=fs.mkdtempSync(path.join(os.tmpdir(),'gate-findings-')); fs.mkdirSync(path.join(project,'.ai'));
+const verdict={summary:'流程圖 SLA 矛盾',repair_targets:['ARCH-WORKFLOW-SPEC'],findings:[{severity:'blocker',category:'trace',title:'SLA 矛盾',summary:'流程圖與 ADR 不一致',repair_targets:['ARCH-WORKFLOW-SPEC'],source_files:['a.json'],acceptance_check:['核對 T1']}]};
+let result=upsertGateFindings(project,{gatePhase:'architecture_gate',unitId:'ARCH-GATE-TRACE',verdict}); assert.equal(result.store.findings.length,1);
+result=upsertGateFindings(project,{gatePhase:'architecture_gate',unitId:'ARCH-GATE-TRACE',verdict}); assert.equal(result.store.findings.length,1); assert.equal(result.touched[0].occurrences,2);
+const plan={units:['ARCH-WORKFLOW-SPEC','ARCH-WORKFLOW-BUILD','ARCH-WORKFLOW-VERIFY','ARCH-CONTEXT','ARCH-ADR'].map(id=>({id}))};
+let targets=resolveRepairTargets({suggested:['ARCH-WORKFLOW-SPEC','INVALID'],plan,maxFraction:1}); assert.deepEqual(targets.targets,['ARCH-WORKFLOW-SPEC','ARCH-WORKFLOW-BUILD','ARCH-WORKFLOW-VERIFY','ARCH-CONTEXT']); assert.deepEqual(targets.rejected,['INVALID']);
+targets=resolveRepairTargets({suggested:['ARCH-WORKFLOW-SPEC'],plan,maxFraction:.4}); assert.equal(targets.over_scope,true);
+const store=loadFindings(project),id=store.findings[0].id; beginRepair(store,[id],{new_strategy:'修正 SLA 來源'}); beginVerification(store,[id]); finishVerification(store,[{id,pass:false,evidence:'仍不一致'}]); assert.equal(store.findings[0].status,'reopened'); assert.equal(needsReflection(store.findings[0]),true);
+assert.equal(validateReflection({root_cause:'來源錯誤',new_strategy:'改以 ADR 權威狀態修正 JSON',difference_from_previous:'前次只改文字，本次修改結構化轉移',verification:['validate','Gate']},store.findings[0].strategies[0]).ok,true);
+assert.throws(()=>transitionFinding(store.findings[0],'closed'));
+console.log('GATE_FINDINGS_SMOKE_OK');
