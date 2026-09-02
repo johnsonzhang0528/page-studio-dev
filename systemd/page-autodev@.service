@@ -9,6 +9,9 @@ WorkingDirectory=%h/page-studio-dev/projects/%i
 ExecStart=%h/page-studio-dev/bin/page-autodev run %i
 SuccessExitStatus=75
 Nice=10
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=30s
 
 [Install]
 WantedBy=default.target
