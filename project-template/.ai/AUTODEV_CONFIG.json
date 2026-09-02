@@ -32,6 +32,27 @@
     "targeted_review_model": "sonnet",
     "final_regression_model": "opus"
   },
+  "complexity_control": {
+    "enabled": true,
+    "source": "Ponytail decision ladder (controller-native adapter; https://github.com/DietrichGebert/ponytail)",
+    "rollout": "shadow",
+    "pilot_tasks": 10,
+    "default_mode": "full",
+    "high_risk_mode": "lite",
+    "allow_ultra": false,
+    "protected_complexity": [
+      "已核准需求、ADR 與公開契約",
+      "安全、資料完整性、交易、冪等與可靠性控制",
+      "Migration、備份、復原、稽核與必要可觀測性",
+      "原任務 verification 與 governance_rules"
+    ],
+    "review": {
+      "strategy": "conditional",
+      "file_threshold": 5,
+      "added_lines_threshold": 150,
+      "max_rounds_per_task": 1
+    }
+  },
   "result_compaction": {
     "enabled": true,
     "preserve_raw_log": true,
