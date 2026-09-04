@@ -11,6 +11,8 @@ projects/
 *.pem
 
 # Runtime state, logs, sessions and caches.
+recovery/
+system/
 **/.ai/logs/
 **/.ai/autodev.lock
 **/.ai/sessions/
