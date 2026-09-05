@@ -3,7 +3,7 @@ set -euo pipefail
 script_path="$(readlink -f "${BASH_SOURCE[0]}")"
 root="$(cd "$(dirname "$script_path")/.." && pwd)"
 cmd="${1:-status}"
-if [[ "$cmd" =~ ^(start|resume|run)$ ]]; then
+if [[ "$cmd" =~ ^(start|resume|resume-once|run|migrate-workflow|slim-docs-apply)$ ]]; then
   project_arg="${2:-}"
   if [[ -n "$project_arg" ]]; then project_name="$project_arg"; else project_name="$(basename "$PWD")"; fi
   if [[ ! "$project_name" =~ ^[A-Za-z0-9._-]+$ ]]; then echo "【控制器錯誤】無效的專案名稱。" >&2; exit 1; fi
