@@ -139,13 +139,13 @@ Archify 圖表不再以單一大任務同時完成所有工作。每張圖預先
 
 其中結構化規格存在後，`validate`、`deliver`、`visual-check`、HTML SHA-256 與收據一致性全部由控制器直接執行，不消耗 Claude turns；Claude 只負責第一次建立／修復規格，以及後續 Architecture Gate 的需求語意審查。任何 AI 工作單元達 turns 上限時，控制器會保存 `session_id` 並以 `--resume` 延續同一個 Claude session，不再開新 session 重讀全部 Context。工作單元完成後即停止沿用該 session，保持跨任務 Context 隔離。
 
-### 受控併行（第一階段）
+### 受控併行
 
-系統預設最多同時執行 2 個彼此獨立的唯讀 Gate／QA 審查單元。這些 Agent 不具備 Write 或 Edit 權限，完成後由控制器統一解析結果；任一審查失敗仍會退回原生產階段修復。會寫入檔案的需求、架構、規格、排程與程式開發目前維持單線，避免相同工作樹的檔案衝突。未來只有在獨立 Git worktree、檔案範圍與相依檢查全部成立後，才可啟用寫入型併行。
+系統預設最多同時執行 4 個彼此獨立的唯讀 Gate／QA 審查單元，以及 3 個通過安全資格檢查的寫入型實作任務。唯讀 Agent 不具備 Write 或 Edit 權限；寫入型任務各自在獨立 Git worktree 執行，且必須相依完成、範圍不重疊、非高風險並具安全驗證指令。完成後由控制器統一整合；任一驗證失敗都會 fail-closed，不會把半完成結果視為通過。
 
-設定位於 `.ai/AUTODEV_CONFIG.json`：`parallel_execution.max_concurrency` 預設為 2，安全上限為 3；設為 `enabled: false` 可完全關閉。Claude 額度不足時，整批未完成單元會保存並等待續跑，不會把半完成結果視為通過。
+設定位於 `.ai/AUTODEV_CONFIG.json`：`parallel_execution.read_only_max_concurrency` 預設 4（安全上限 6），`write_max_concurrency` 預設 3（安全上限 4）；設為 `enabled: false` 可完全關閉。可執行 `page-autodev parallel-diagnostics` 查看每個任務為何可併行或被排除。整合驗證會對跨 Worker 重複指令去重，整批合併後執行一次完整集合；Claude 額度不足時會保存未完成單元等待續跑。
 
-### 寫入型併行（第二階段）
+### 寫入型併行
 
 實作階段會從 `.ai/TASK_GRAPH.json` 選出至少 2 個相依已完成、範圍不重疊、非高風險的任務。每個任務必須提供：
 

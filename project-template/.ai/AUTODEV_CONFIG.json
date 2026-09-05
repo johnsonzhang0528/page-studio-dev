@@ -104,7 +104,8 @@
   },
   "parallel_execution": {
     "enabled": true,
-    "max_concurrency": 2,
+    "read_only_max_concurrency": 4,
+    "write_max_concurrency": 3,
     "read_only_gates": true,
     "isolated_write_worktrees": true,
     "auto_reduce_on_quota_pressure": true
