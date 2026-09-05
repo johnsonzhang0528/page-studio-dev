@@ -2,4 +2,19 @@
 set -euo pipefail
 script_path="$(readlink -f "${BASH_SOURCE[0]}")"
 root="$(cd "$(dirname "$script_path")/.." && pwd)"
+cmd="${1:-status}"
+if [[ "$cmd" =~ ^(start|resume|run)$ ]]; then
+  project_arg="${2:-}"
+  if [[ -n "$project_arg" ]]; then project_name="$project_arg"; else project_name="$(basename "$PWD")"; fi
+  if [[ ! "$project_name" =~ ^[A-Za-z0-9._-]+$ ]]; then echo "【控制器錯誤】無效的專案名稱。" >&2; exit 1; fi
+  lock_root="${XDG_RUNTIME_DIR:-/tmp}/page-autodev-${UID}/locks"
+  mkdir -p -m 700 "$lock_root"
+  lock_file="$lock_root/$project_name.lock"
+  exec 9>"$lock_file"
+  if ! flock -n 9; then
+    if [[ "$cmd" == "run" ]]; then echo "【正常略過｜CONCURRENCY_CONFLICT】$project_name 已有唯一控制器；本次不派發 worker。"; exit 75; fi
+    echo "【已在執行｜CONCURRENCY_CONFLICT】$project_name 已有唯一控制器；設定不變且不重複派發 worker。"; exit 0
+  fi
+  export PAGE_AUTODEV_PROJECT_LOCKED="$project_name"
+fi
 exec node "$root/lib/autodev.mjs" "$@"
