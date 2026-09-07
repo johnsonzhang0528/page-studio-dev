@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
-import {loadFindings,upsertGateFindings,transitionFinding,resolveRepairTargets,beginRepair,beginVerification,finishVerification,invalidateFindingsBeforeRevision,needsReflection,validateReflection} from '../lib/gate-findings.mjs';
+import {loadFindings,upsertGateFindings,transitionFinding,resolveRepairTargets,beginRepair,beginVerification,finishVerification,invalidateFindingsBeforeRevision,activeFindingIds,needsReflection,validateReflection} from '../lib/gate-findings.mjs';
 const project=fs.mkdtempSync(path.join(os.tmpdir(),'gate-findings-')); fs.mkdirSync(path.join(project,'.ai'));
 const verdict={summary:'流程圖 SLA 矛盾',repair_targets:['ARCH-WORKFLOW-SPEC'],findings:[{severity:'blocker',category:'trace',title:'SLA 矛盾',summary:'流程圖與 ADR 不一致',repair_targets:['ARCH-WORKFLOW-SPEC'],source_files:['a.json'],acceptance_check:['核對 T1']}]};
 let result=upsertGateFindings(project,{gatePhase:'architecture_gate',unitId:'ARCH-GATE-TRACE',verdict}); assert.equal(result.store.findings.length,1);
@@ -16,4 +16,7 @@ const invalidated=invalidateFindingsBeforeRevision(store,{inputRevision:2,eviden
 assert.equal(invalidated.stale,2); assert.equal(store.findings.every(item=>item.status==='stale'),true,'所有舊 revision finding 都必須失效');
 const repeatedInvalidation=invalidateFindingsBeforeRevision(store,{inputRevision:2,evidence:'重複執行'});
 assert.equal(repeatedInvalidation.stale,0,'finding invalidation 必須冪等');
+store.findings.push({...store.findings[0],id:'GF-CURRENT-OPEN',fingerprint:'current-open',status:'open',input_revision:2});
+store.findings.push({...store.findings[0],id:'GF-CURRENT-CLOSED',fingerprint:'current-closed',status:'closed',input_revision:2});
+assert.deepEqual(activeFindingIds(store,{inputRevision:2,requested:['GF-CURRENT-CLOSED','GF-CURRENT-OPEN',store.findings[0].id,'GF-MISSING']}),['GF-CURRENT-OPEN'],'active_findings 只能保留目前 revision 的未結 finding');
 console.log('GATE_FINDINGS_SMOKE_OK');
