@@ -12,6 +12,11 @@ Nice=10
 KillMode=control-group
 KillSignal=SIGTERM
 TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=%h/page-studio-dev/projects/%i %h/.cache %h/.config
 
 [Install]
 WantedBy=default.target
