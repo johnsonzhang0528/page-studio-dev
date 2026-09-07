@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const controller=fileURLToPath(new URL('../lib/autodev.mjs',import.meta.url));
-const projectsRoot=path.join(os.homedir(),'page-studio-dev','projects');
+const projectsRoot=process.env.SHADOW_SOAK_SOURCE_ROOT??path.join(os.homedir(),'page-studio-dev','projects');
 const projects=(process.env.SHADOW_SOAK_PROJECTS??'test-project,seo-empire').split(',').map(value=>value.trim()).filter(Boolean);
 const durationMs=Number(process.env.SHADOW_SOAK_DURATION_MS??24*60*60*1000);
 const intervalMs=Number(process.env.SHADOW_SOAK_INTERVAL_MS??5*60*1000);
@@ -24,30 +24,34 @@ function filesUnder(root){
   }
   return found.sort();
 }
-function manifest(){
-  const result={};
-  for(const project of projects){
-    const root=path.join(projectsRoot,project,'.ai');
-    result[project]=filesUnder(root).map(file=>({path:path.relative(root,file),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}));
-  }
-  return result;
+function manifest(root){
+  return filesUnder(root).map(file=>({path:path.relative(root,file),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}));
 }
 function append(record){ fs.appendFileSync(outputPath,`${JSON.stringify(record)}\n`); }
 function evaluate(project){
-  const run=spawnSync(process.execPath,[controller,'shadow-evaluate',project],{encoding:'utf8'});
-  assert.equal(run.status,0,`${project} shadow-evaluate 失敗：${run.stderr||run.stdout}`);
-  const result=JSON.parse(run.stdout),receipt=result.receipt;
-  assert.equal(result.ok,true); assert.equal(receipt.project,project); assert.equal(receipt.mode,'shadow');
-  assert.equal(receipt.dispatch_allowed,false); assert.equal(receipt.write_allowed,false); assert.equal(receipt.rollback.stop_required,false);
-  return receipt.decision_sha256;
+  const temporaryRoot=fs.mkdtempSync(path.join(os.tmpdir(),'page-autodev-shadow-'));
+  assert.ok(path.resolve(temporaryRoot).startsWith(path.resolve(os.tmpdir())+path.sep));
+  try {
+    const source=path.join(projectsRoot,project),fixtureHome=path.join(temporaryRoot,'home'),fixture=path.join(fixtureHome,'page-studio-dev','projects',project);
+    fs.mkdirSync(path.join(fixture,'.git'),{recursive:true});
+    fs.cpSync(path.join(source,'.ai'),path.join(fixture,'.ai'),{recursive:true,errorOnExist:true});
+    fs.copyFileSync(path.join(source,'CLAUDE.md'),path.join(fixture,'CLAUDE.md'));
+    const before=manifest(path.join(fixture,'.ai')),sourceSha256=crypto.createHash('sha256').update(JSON.stringify(before)).digest('hex');
+    const run=spawnSync(process.execPath,[controller,'shadow-evaluate',project],{encoding:'utf8',env:{...process.env,HOME:fixtureHome}});
+    assert.equal(run.status,0,`${project} shadow-evaluate 失敗：${run.stderr||run.stdout}`);
+    const result=JSON.parse(run.stdout),receipt=result.receipt;
+    assert.equal(result.ok,true); assert.equal(receipt.project,project); assert.equal(receipt.mode,'shadow');
+    assert.equal(receipt.dispatch_allowed,false); assert.equal(receipt.write_allowed,false); assert.equal(receipt.rollback.stop_required,false);
+    assert.deepEqual(manifest(path.join(fixture,'.ai')),before,`SHADOW_WRITE_DETECTED：${project} 的拋棄式快照被修改`);
+    return {decision_sha256:receipt.decision_sha256,source_sha256:sourceSha256};
+  } finally { fs.rmSync(temporaryRoot,{recursive:true,force:true}); }
 }
 
-const startedAt=Date.now(),baseline=manifest(); let samples=0;
-append({event:'start',started_at:new Date(startedAt).toISOString(),duration_ms:durationMs,interval_ms:intervalMs,projects,baseline_sha256:crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex')});
+const startedAt=Date.now(); let samples=0;
+append({event:'start',started_at:new Date(startedAt).toISOString(),duration_ms:durationMs,interval_ms:intervalMs,projects,mode:'disposable_snapshot'});
 try {
   while(true){
     const decisions=Object.fromEntries(projects.map(project=>[project,evaluate(project)]));
-    assert.deepEqual(manifest(),baseline,'SHADOW_WRITE_DETECTED：Project .ai 內容在 soak 期間改變');
     samples+=1; append({event:'sample',at:new Date().toISOString(),sample:samples,decisions});
     const remaining=durationMs-(Date.now()-startedAt); if(remaining<=0) break;
     await new Promise(resolve=>setTimeout(resolve,Math.min(intervalMs,remaining)));
