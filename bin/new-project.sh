@@ -22,6 +22,7 @@ fi
 
 mkdir -p "$root/projects"
 cp -a "$template" "$target"
+cp "$root/project-template.gitignore" "$target/.gitignore"
 created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 sed -i "s/__PROJECT_NAME__/$name/g; s/__CREATED_AT__/$created_at/g" "$target/.ai/PROJECT_STATE.json" "$target/.ai/TASK_GRAPH.json"
 git -C "$target" init -q -b main

@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+build/
+coverage/
+.DS_Store
+*.log
+.ai/logs/
+.ai/autodev.lock/
+.ai/AUTODEV_STOP
+.ai/GATE_CACHE.json
+.ai/*.tmp.*
+.ai/runtime/
