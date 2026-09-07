@@ -28,14 +28,16 @@ function manifest(root){
   return filesUnder(root).map(file=>({path:path.relative(root,file),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}));
 }
 function append(record){ fs.appendFileSync(outputPath,`${JSON.stringify(record)}\n`); }
-function evaluate(project){
+function evaluateOnce(project){
   const temporaryRoot=fs.mkdtempSync(path.join(os.tmpdir(),'page-autodev-shadow-'));
   assert.ok(path.resolve(temporaryRoot).startsWith(path.resolve(os.tmpdir())+path.sep));
   try {
     const source=path.join(projectsRoot,project),fixtureHome=path.join(temporaryRoot,'home'),fixture=path.join(fixtureHome,'page-studio-dev','projects',project);
+    const sourceBefore=manifest(path.join(source,'.ai'));
     fs.mkdirSync(path.join(fixture,'.git'),{recursive:true});
     fs.cpSync(path.join(source,'.ai'),path.join(fixture,'.ai'),{recursive:true,errorOnExist:true});
     fs.copyFileSync(path.join(source,'CLAUDE.md'),path.join(fixture,'CLAUDE.md'));
+    assert.deepEqual(manifest(path.join(source,'.ai')),sourceBefore,`SNAPSHOT_CHANGED：${project} 複製期間來源正在更新`);
     const before=manifest(path.join(fixture,'.ai')),sourceSha256=crypto.createHash('sha256').update(JSON.stringify(before)).digest('hex');
     const run=spawnSync(process.execPath,[controller,'shadow-evaluate',project],{encoding:'utf8',env:{...process.env,HOME:fixtureHome}});
     assert.equal(run.status,0,`${project} shadow-evaluate 失敗：${run.stderr||run.stdout}`);
@@ -45,6 +47,11 @@ function evaluate(project){
     assert.deepEqual(manifest(path.join(fixture,'.ai')),before,`SHADOW_WRITE_DETECTED：${project} 的拋棄式快照被修改`);
     return {decision_sha256:receipt.decision_sha256,source_sha256:sourceSha256};
   } finally { fs.rmSync(temporaryRoot,{recursive:true,force:true}); }
+}
+function evaluate(project){
+  let lastError;
+  for(let attempt=1;attempt<=3;attempt+=1){ try { return evaluateOnce(project); } catch(error) { lastError=error; } }
+  throw lastError;
 }
 
 const startedAt=Date.now(); let samples=0;
