@@ -11,6 +11,7 @@ WorkingDirectory=/opt/page-autodev
 ExecStart=/usr/bin/node /opt/page-autodev/bin/page-autodev-openai-egress-daemon.mjs
 LoadCredential=egress_policy:/etc/page-autodev/credentials/egress-policy.json
 LoadCredential=gateway_assertion_secret:/etc/page-autodev/credentials/gateway-assertion-secret
+LoadCredential=openai_api_key:/etc/page-autodev/credentials/openai-api-key
 Restart=on-failure
 RestartSec=5s
 NoNewPrivileges=true

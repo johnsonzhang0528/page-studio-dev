@@ -25,6 +25,7 @@ assert.match(gatewaySocket,/^ListenStream=\/run\/page-autodev\/billing-gateway\.
 assert.match(egressSocket,/^ListenStream=\/run\/page-autodev\/openai-egress\.sock$/m);
 assert.match(egressService,/^LoadCredential=egress_policy:/m);
 assert.match(egressService,/^LoadCredential=gateway_assertion_secret:/m);
+assert.match(egressService,/^LoadCredential=openai_api_key:/m);
 assert.doesNotMatch(gatewayService,/LoadCredential=.*openai/i);
 
 console.log('BILLING_SYSTEMD_ARTIFACT_TESTS_OK');
