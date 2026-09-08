@@ -17,7 +17,7 @@ try {
   assert.equal(files.filter(name=>name.endsWith('.receipt.json')).length,1,'相同損壞內容必須只保存一份收據');
   const evidence=fs.readFileSync(path.join(quarantine,files.find(name=>name.endsWith('.corrupt')))); assert.deepEqual(evidence,corrupt);
   const receipt=JSON.parse(fs.readFileSync(path.join(quarantine,files.find(name=>name.endsWith('.receipt.json'))),'utf8'));
-  assert.equal(receipt.error_code,'INVALID_JSON'); assert.equal(receipt.bytes,corrupt.length); assert.equal('raw' in receipt,false,'收據不得複製可能含敏感資訊的原始內容');
+  assert.equal(receipt.error_code,'INVALID_JSON'); assert.equal(receipt.kind,'corrupt_project_state'); assert.equal(receipt.bytes,corrupt.length); assert.equal('raw' in receipt,false,'收據不得複製可能含敏感資訊的原始內容');
   fs.writeFileSync(stateFile,'{"phase":"requirements"}\n');
   assert.throws(()=>readProjectState(project),error=>error.code==='STATE_UNRECOVERABLE'&&error.receipt.error_code==='INVALID_STATE_SCHEMA');
   console.log('STATE_STORE_TESTS_OK');

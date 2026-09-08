@@ -27,6 +27,12 @@ try {
   const stalePath=path.join(temp,'.ai','runtime','work-unit-leases',stale.metadata.lease_id,'lease.json');
   const recovered=acquireWorkUnitLease(temp,staleId,{controllerPid:process.pid}); assert(fs.existsSync(stalePath),'stale lease not reclaimed'); recovered.release(); pass('CONCURRENCY-DEATH-07');
 
+  const corruptId=leaseIdentity({project:temp,inputRevision:1,phase:'architecture',unitId:'ARCH-CORRUPT'}),corruptLease=acquireWorkUnitLease(temp,corruptId,{controllerPid:999999});
+  const corruptPath=path.join(temp,'.ai','runtime','work-unit-leases',corruptLease.metadata.lease_id,'lease.json'); fs.writeFileSync(corruptPath,'{"lease_id":');
+  let corruptBlocked=false; try { acquireWorkUnitLease(temp,corruptId,{controllerPid:process.pid}); } catch(error) { corruptBlocked=error.code==='LEASE_CONFLICT'; }
+  assert(corruptBlocked,'損壞 lease metadata 必須 fail-closed');
+  const leaseQuarantine=path.join(temp,'.ai','quarantine','corrupt_lease'); assert(fs.readdirSync(leaseQuarantine).filter(name=>name.endsWith('.corrupt')).length===1,'損壞 lease 必須保存一份 quarantine 證據'); pass('CONCURRENCY-DEATH-11');
+
   const child=spawn('sh',['-c','sleep 30'],{detached:true,stdio:'ignore'}); terminateChildGroup(child); await new Promise(resolve=>child.once('close',resolve)); assert(child.exitCode!==0,'child group survived termination'); pass('CONCURRENCY-DEATH-06');
 
   // Shared phases are single-controller/single-worktree; different projects use different lock paths.
