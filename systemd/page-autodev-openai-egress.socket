@@ -1,0 +1,16 @@
+[Unit]
+Description=Page AutoDev OpenAI egress broker socket
+
+[Socket]
+ListenStream=/run/page-autodev/openai-egress.sock
+FileDescriptorName=openai-egress
+SocketUser=page-autodev-openai-egress
+SocketGroup=page-autodev-egress
+SocketMode=0660
+DirectoryMode=0750
+RemoveOnStop=true
+Accept=no
+
+[Install]
+WantedBy=sockets.target
+

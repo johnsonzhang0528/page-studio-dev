@@ -1,0 +1,16 @@
+[Unit]
+Description=Page AutoDev Billing Gateway socket
+
+[Socket]
+ListenStream=/run/page-autodev/billing-gateway.sock
+FileDescriptorName=billing-gateway
+SocketUser=page-autodev-billing-gateway
+SocketGroup=page-autodev-workers
+SocketMode=0660
+DirectoryMode=0750
+RemoveOnStop=true
+Accept=no
+
+[Install]
+WantedBy=sockets.target
+
