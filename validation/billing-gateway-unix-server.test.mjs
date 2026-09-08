@@ -17,4 +17,14 @@ try{
 assert.equal(fs.existsSync(socketPath),false);
 fs.writeFileSync(socketPath,'unsafe');
 try{const unsafe=createBillingGatewayUnixServer({policy,handler:async()=>({})});await assert.rejects(unsafe.start(),error=>error.code==='BILLING_GATEWAY_SERVER_ERROR');}finally{fs.unlinkSync(socketPath);}
+
+let receivedListen=null,closed=0;
+const fakeHttpServer={
+  once(){},off(){},listen(options,callback){receivedListen=options;callback();},close(callback){closed+=1;callback();}
+};
+const activated=createBillingGatewayUnixServer({policy,handler:async()=>({}),createServer:()=>fakeHttpServer});
+assert.deepEqual(await activated.start({fd:3}),{socket_activation:true,fd:3});
+assert.deepEqual(receivedListen,{fd:3});
+await activated.stop();assert.equal(closed,1);
+await assert.rejects(createBillingGatewayUnixServer({policy,handler:async()=>({}),createServer:()=>fakeHttpServer}).start({fd:-1}),error=>error.code==='BILLING_GATEWAY_CONFIG_INVALID');
 console.log('BILLING_GATEWAY_UNIX_SERVER_TESTS_OK');
