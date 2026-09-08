@@ -13,6 +13,10 @@ const store={schema_version:1,revision:0,findings:[finding('ACTIVE','open','2026
 const result=saveFindings(project,store,{retention:{maxTerminal:1,maxActive:2}}); assert.equal(result.archived,1); assert.deepEqual(loadFindings(project).findings.map(item=>item.id).sort(),['ACTIVE','NEW']);
 const archiveBefore=fs.readFileSync(findingsArchivePath(project),'utf8'); saveFindings(project,{...loadFindings(project),findings:[...loadFindings(project).findings,finding('OLD','closed','2026-01-01')]},{retention:{maxTerminal:1,maxActive:2}}); assert.equal(fs.readFileSync(findingsArchivePath(project),'utf8'),archiveBefore,'重播相同 finding 不得重複封存');
 const tooMany={schema_version:1,revision:0,findings:[finding('A','open',''),finding('B','repairing',''),finding('C','verifying','')]}; assert.throws(()=>saveFindings(project,tooMany,{retention:{maxTerminal:1,maxActive:2}}),/ACTIVE_FINDINGS_LIMIT_EXCEEDED/);
+fs.writeFileSync(findingsArchivePath(project),'{"archive_key":\n');
+const archiveTrigger={schema_version:1,revision:0,findings:[finding('OLD-A','closed','2026-01-01'),finding('OLD-B','closed','2026-01-02')]};
+assert.throws(()=>saveFindings(project,archiveTrigger,{retention:{maxTerminal:1,maxActive:2}}),/GATE_FINDINGS_ARCHIVE_CORRUPT/);
+assert.equal(fs.readdirSync(path.join(project,'.ai','quarantine','corrupt_findings_archive')).filter(name=>name.endsWith('.corrupt')).length,1,'損壞 findings archive 必須保存 quarantine 證據');
 fs.rmSync(project,{recursive:true,force:true}); console.log('RETENTION_POLICY_TESTS_OK');
 
 for(const fixture of String(process.env.RETENTION_FIXTURE_PROJECTS??'').split(path.delimiter).filter(Boolean)){

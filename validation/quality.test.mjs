@@ -34,6 +34,9 @@ assert.equal(preparedAgain.ok,true); assert.equal(preparedAgain.migration.change
 fs.writeFileSync(path.join(preflightAi,'INPUT_INDEX.json'),JSON.stringify({schema_version:99,files:[]}));
 const rejected=prepareControllerDispatch(preflightProject,{writeMigration:true});
 assert.equal(rejected.ok,false); assert.match(rejected.checks.find(check=>!check.ok)?.detail??'',/支援版本/);
+fs.writeFileSync(path.join(preflightAi,'INPUT_INDEX.json'),'{"files":');
+const corruptInput=prepareControllerDispatch(preflightProject,{writeMigration:true}); assert.equal(corruptInput.ok,false); assert.ok(corruptInput.migration.quarantine);
+assert.equal(fs.readdirSync(path.join(preflightAi,'quarantine','corrupt_controller_json')).filter(name=>name.endsWith('.corrupt')).length>=1,true,'損壞 INPUT_INDEX 必須保存 quarantine 證據');
 fs.rmSync(preflightProject,{recursive:true,force:true});
 
 const project=fs.mkdtempSync(path.join(os.tmpdir(),'quality-gate-'));

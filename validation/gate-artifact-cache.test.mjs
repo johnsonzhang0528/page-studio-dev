@@ -11,4 +11,5 @@ assert.equal(gateCacheProbe(project,'architecture_gate',unit,{verification_mode:
 fs.writeFileSync(path.join(project,'docs','architecture','ARCHITECTURE.md'),'v2\n'); const changed=gateCacheProbe(project,'architecture_gate',unit,{verification_mode:'targeted',active_findings:['GF-A','GF-B']},policy); assert.equal(changed.hit,false); assert.ok(changed.changed.includes('docs/architecture/ARCHITECTURE.md'));
 assert.notEqual(gateArtifactManifest(project,'architecture_gate',unit,{},policy)['@policy'],gateArtifactManifest(project,'architecture_gate',unit,{}, {...policy,policy_fingerprint:'policy-b'})['@policy']);
 fs.writeFileSync(path.join(project,'.ai','GATE_CACHE.json'),'{broken'); assert.equal(gateCacheProbe(project,'architecture_gate',unit,{},policy).hit,false);
+assert.equal(fs.readdirSync(path.join(project,'.ai','quarantine','corrupt_rebuildable_cache')).filter(name=>name.endsWith('.corrupt')).length,1,'損壞 cache 必須隔離後強制 miss');
 fs.rmSync(project,{recursive:true,force:true}); console.log('GATE_ARTIFACT_CACHE_TESTS_OK');
