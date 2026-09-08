@@ -9,6 +9,10 @@ const conservativeCacheFallback=resolveFeatureRegistry({gate_efficiency:{artifac
 assert.equal(conservativeCacheFallback.ok,true,'關閉快取應回退為完整驗證，不得誤判為安全功能缺失');
 assert.equal(conservativeCacheFallback.features.trusted_gate_cache,false);
 assert.equal(conservativeCacheFallback.dispatch_allowed,true);
+const hybridDefaults=resolveFeatureRegistry({rollout:{mode:'active'}});
+assert.equal(hybridDefaults.features.hybrid_provider,false); assert.equal(hybridDefaults.features.openai_adapter,false); assert.equal(hybridDefaults.features.hybrid_routing,false);
+const incompleteHybrid=resolveFeatureRegistry({rollout:{mode:'active',features:{openai_adapter:true}}}); assert.equal(incompleteHybrid.ok,false); assert.match(incompleteHybrid.issues.join('|'),/openai_adapter requires hybrid_provider/);
+const completeHybrid=resolveFeatureRegistry({rollout:{mode:'active',features:{hybrid_provider:true,openai_adapter:true,hybrid_routing:true,quota_coordinator:true}}}); assert.equal(completeHybrid.ok,true);
 assert.match(resolveFeatureRegistry({rollout:{features:{usage_ledger:false,quota_coordinator:true}}}).issues.join('|'),/FEATURE_DEPENDENCY_DISABLED/);
 const overridden=applyEffectiveFeatures({account_quota_admission:{enabled:false},rollout:{features:{quota_coordinator:true}}},resolveFeatureRegistry({account_quota_admission:{enabled:false},rollout:{features:{quota_coordinator:true}}})); assert.equal(overridden.account_quota_admission.enabled,true,'registry 必須成為 effective feature 的單一控制面');
 const requiredStopSignals=['gate_bypass','quality_bypass','approval_bypass','source_recheck_bypass','cache_provenance_invalid','state_unrecoverable','finding_revision_unknown','token_duplicate','quota_oversold','migration_non_idempotent','progress_without_evidence','legacy_death_test_failed','mutation_survived','machine_signature_redispatched','quality_regression'];

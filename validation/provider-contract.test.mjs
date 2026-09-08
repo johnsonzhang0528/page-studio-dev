@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { createInvocationSpec, createInvocationResult, validateInvocationSpec } from '../lib/provider-contract.mjs';
+import { createCapabilityRegistry, authorizeCapability } from '../lib/provider-capabilities.mjs';
+import { createFakeProviderAdapter } from '../lib/fake-provider-adapter.mjs';
+
+const base={schema_version:1,invocation_id:'inv-1',run_id:'run-1',project:'fixture',phase:'implementation',unit_id:'UNIT-1',attempt:1,input_revision:3,controller_sha:'abc',policy_fingerprint:'policy',objective:'produce fixture output',context_manifest:{sha256:'context'},allowed_write_scope:['src/example.mjs'],tool_capabilities:['filesystem_read','filesystem_write'],network_policy:'deny_all',timeouts:{connect_ms:100,first_token_ms:100,idle_ms:100,tool_ms:100,invocation_deadline_ms:1000,work_unit_deadline_ms:2000},budget:{max_input_tokens:100,max_output_tokens:100,max_reasoning_tokens:100,max_tool_calls:2,max_api_round_trips:1,max_wall_ms:2000,max_cost_microusd:1000},output_schema:{type:'object'},receipt_schema:{type:'object'},risk_tier:'low',required_quality_tier:'standard',verification_mode:'isolated_write',provider:'fake',model:'fake-v1',reason_code:'OFFLINE_TEST',fallback_policy:[],idempotency_key:'idem-1',parent_checkpoint:'checkpoint-1'};
+const spec=createInvocationSpec(base); assert.ok(Object.isFrozen(spec)); assert.ok(Object.isFrozen(spec.budget));
+assert.equal(validateInvocationSpec({...base,unexpected:true}).ok,false);
+assert.throws(()=>createInvocationSpec({...base,allowed_write_scope:['../live']}),/INVALID_WRITE_SCOPE/);
+assert.throws(()=>createInvocationSpec({...base,budget:{...base.budget,max_cost_microusd:0}}),/INVALID_BUDGET_FIELD/);
+assert.throws(()=>createInvocationSpec({...base,budget:{...base.budget,retry:99}}),/UNKNOWN_BUDGET_FIELD/);
+assert.throws(()=>createInvocationSpec({...base,verification_mode:'read_only'}),/READ_ONLY_CAPABILITY_VIOLATION/);
+assert.doesNotThrow(()=>createInvocationSpec({...base,verification_mode:'read_only',allowed_write_scope:[],tool_capabilities:['filesystem_read']}));
+assert.throws(()=>createInvocationResult(spec,{outcome:'success',finish_reason:'stop',wall_ms:1}),/MISSING_PROVIDER_REQUEST_ID/);
+const registry=createCapabilityRegistry({version:1,models:[{provider:'fake',model:'fake-v1',snapshot:'fixture-2026-09-08',capabilities:{structured_output:true,tool_loop:true,cancellation:true,usage_receipt:true,read_only:true,isolated_write:true}}]});
+assert.equal(authorizeCapability(registry,{provider:'fake',model:'missing',required:['read_only']}).ok,false);
+assert.equal(authorizeCapability(registry,{provider:'fake',model:'fake-v1',required:['read_only','usage_receipt']}).ok,true);
+const adapter=createFakeProviderAdapter({registry}),first=await adapter.invoke(spec),second=await adapter.invoke(spec);
+assert.equal(first.outcome,'success'); assert.equal(first.provider_request_id,second.provider_request_id,'同 idempotency key 必須產生穩定 request identity'); assert.equal(first.idempotency_key,spec.idempotency_key);
+await assert.rejects(createFakeProviderAdapter({registry,mode:'throw_timeout'}).invoke(spec),error=>error.code==='PROVIDER_TIMEOUT');
+const throttled=await createFakeProviderAdapter({registry,mode:'throttled'}).invoke(spec); assert.equal(throttled.retryability,true); assert.equal(throttled.error_class,'RATE_LIMITED');
+console.log('PROVIDER_CONTRACT_TESTS_OK');
