@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
+import { appendAiInvocationReceipt, aiInvocationLedgerPath, recoverAiInvocationLedger } from '../lib/ai-invocation-ledger.mjs';
+import { createPriceRegistry, calculateUsageCost } from '../lib/price-registry.mjs';
+import { appendDualInvocationReceipt, usageLedgerPath } from '../lib/usage-ledger.mjs';
+
+const project=fs.mkdtempSync(path.join(os.tmpdir(),'ai-ledger-')); fs.mkdirSync(path.join(project,'.ai'));
+const prices=createPriceRegistry({version:1,effective_at:'2026-09-08T00:00:00Z',expires_at:'2026-09-09T00:00:00Z',source:'offline-fixture',models:[{provider:'claude',model:'sonnet',uncached_input_microusd_per_million:3_000_000,cached_input_microusd_per_million:300_000,output_microusd_per_million:15_000_000,reasoning_microusd_per_million:15_000_000}]});
+assert.equal(calculateUsageCost({input_tokens:1,cached_input_tokens:1,output_tokens:1,reasoning_tokens:1},prices.resolve('claude','sonnet',new Date('2026-09-08T01:00:00Z')).entry),34,'各 token 類別必須分別向上取整');
+const details={provider:'claude',model:'sonnet',provider_request_id:'req-1',idempotency_key:'idem-1',run_id:'run-1',phase:'requirements',unit_id:'REQ-1',attempt:1,outcome:'completed',usage:{input_tokens:10,cached_input_tokens:20,output_tokens:5,reasoning_tokens:2},wall_duration_ms:50};
+assert.equal(appendAiInvocationReceipt(project,details,{priceRegistry:prices,now:new Date('2026-09-08T01:00:00Z')}).written,true);
+assert.equal(appendAiInvocationReceipt(project,details,{priceRegistry:prices,now:new Date('2026-09-08T01:01:00Z')}).deduplicated,true);
+assert.throws(()=>appendAiInvocationReceipt(project,{...details,provider_request_id:'req-2'},{priceRegistry:prices,now:new Date('2026-09-08T01:02:00Z')}),error=>error.code==='AI_LEDGER_IDENTITY_CONFLICT','相同 idempotency key 出現不同 request ID 必須熔斷，不得當普通去重');
+assert.ok(fs.existsSync(`${aiInvocationLedgerPath(project)}.pending`),'未確認成本 exposure 必須保留'); fs.unlinkSync(`${aiInvocationLedgerPath(project)}.pending`);
+assert.throws(()=>appendAiInvocationReceipt(project,{...details,idempotency_key:'idem-2'},{priceRegistry:prices,now:new Date('2026-09-08T01:02:00Z')}),error=>error.code==='AI_LEDGER_IDENTITY_CONFLICT','相同 request ID 出現不同 idempotency key 也必須熔斷');
+fs.unlinkSync(`${aiInvocationLedgerPath(project)}.pending`);
+let rows=fs.readFileSync(aiInvocationLedgerPath(project),'utf8').trim().split('\n').map(JSON.parse); assert.equal(rows.length,1); assert.equal(rows[0].pricing_status,'priced'); assert.ok(rows[0].final_cost_microusd>0);
+const pending={...rows[0],receipt_id:'pending',provider_request_id:'req-pending',idempotency_key:'idem-pending'}; fs.writeFileSync(`${aiInvocationLedgerPath(project)}.pending`,JSON.stringify(pending)); assert.equal(recoverAiInvocationLedger(project).recovered,true); assert.equal(recoverAiInvocationLedger(project).recovered,false); rows=fs.readFileSync(aiInvocationLedgerPath(project),'utf8').trim().split('\n').map(JSON.parse); assert.equal(rows.length,2);
+const raw=JSON.stringify({message_id:'msg-dual',usage:{input_tokens:1,cache_creation_input_tokens:2,cache_read_input_tokens:3,output_tokens:4,thinking_tokens:5}}),dual=appendDualInvocationReceipt(project,{raw,run_id:'run-dual',phase:'qa',unit_id:'QA-1',attempt:1,model:'sonnet',outcome:'completed',wall_duration_ms:10},{now:new Date('2026-09-08T02:00:00Z')}); assert.equal(dual.legacy.written,true); assert.equal(dual.neutral.written,true); assert.ok(fs.existsSync(usageLedgerPath(project))); assert.equal(fs.readFileSync(aiInvocationLedgerPath(project),'utf8').trim().split('\n').length,3); assert.equal(dual.neutral.receipt.pricing_status,'unpriced'); assert.equal(dual.neutral.receipt.final_cost_microusd,null);
+const historical=rows[0].final_cost_microusd; assert.equal(JSON.parse(fs.readFileSync(aiInvocationLedgerPath(project),'utf8').split('\n')[0]).final_cost_microusd,historical,'新價格不得回寫歷史成本');
+fs.writeFileSync(`${aiInvocationLedgerPath(project)}.lock`,'99999999'); assert.equal(appendAiInvocationReceipt(project,{...details,provider_request_id:'req-after-stale',idempotency_key:'idem-after-stale'}).written,true,'已確認死亡的 lock owner 必須可安全回收');
+fs.writeFileSync(`${aiInvocationLedgerPath(project)}.lock`,String(process.pid)); assert.throws(()=>appendAiInvocationReceipt(project,{...details,provider_request_id:'req-locked',idempotency_key:'idem-locked'}),error=>error.code==='AI_LEDGER_LOCKED'); fs.unlinkSync(`${aiInvocationLedgerPath(project)}.lock`);
+fs.writeFileSync(aiInvocationLedgerPath(project),'{broken'); assert.throws(()=>appendAiInvocationReceipt(project,{...details,provider_request_id:'req-3',idempotency_key:'idem-3'}),error=>error.code==='AI_LEDGER_CORRUPT');
+fs.rmSync(project,{recursive:true,force:true}); console.log('AI_INVOCATION_LEDGER_TESTS_OK');
