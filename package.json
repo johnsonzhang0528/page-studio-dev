@@ -1,0 +1,15 @@
+{
+  "name": "page-studio-dev-controller",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:validation && npm run test:death && npm run test:property",
+    "test:unit": "node validation/architecture-ir.test.mjs && node validation/model-router.test.mjs && node validation/state-store.test.mjs",
+    "test:integration": "node validation/gate-findings.test.mjs && node validation/gate-artifact-cache.test.mjs && node validation/quality.test.mjs && node validation/git-checkpoint.test.mjs",
+    "test:validation": "node --test validation/*.test.mjs",
+    "test:death": "node lib/autodev.mjs self-test && node validation/concurrency-death-tests.mjs && node validation/durable-crash-matrix.test.mjs && node validation/parallel-crash-matrix.test.mjs",
+    "test:property": "node validation/state-transition-property.test.mjs",
+    "test:mutation": "node validation/workflow-optimization-mutation.test.mjs"
+  }
+}
