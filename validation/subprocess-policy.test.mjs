@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { safeSubprocessEnv, redactSecrets } from '../lib/subprocess-policy.mjs';
+
+const env=safeSubprocessEnv({PATH:'/bin',HOME:'/tmp/home',LANG:'C',ANTHROPIC_API_KEY:'anthropic-secret',TELEGRAM_BOT_TOKEN:'telegram-secret',DATABASE_URL:'postgresql://admin:pw@db/app'},{CI:'1'});
+assert.deepEqual(env,{HOME:'/tmp/home',PATH:'/bin',LANG:'C',CI:'1'});
+assert.equal(Object.values(env).some(value=>/anthropic-secret|telegram-secret|admin:pw/.test(value)),false);
+
+const output=redactSecrets('Authorization=Bearer abc.def token=plain-secret password=hunter2 postgresql://admin:s3cr3t@db/app\n-----BEGIN PRIVATE KEY-----\nprivate material\n-----END PRIVATE KEY-----');
+for(const secret of ['abc.def','plain-secret','hunter2','s3cr3t','private material']) assert.equal(output.includes(secret),false,`${secret} must be redacted`);
+assert.match(output,/\[REDACTED/);
+console.log('SUBPROCESS_POLICY_TESTS_OK');
