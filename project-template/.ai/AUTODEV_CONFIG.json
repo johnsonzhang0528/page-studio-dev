@@ -10,7 +10,10 @@
       "quota_coordinator": true,
       "compact_handoff": true,
       "architecture_ir": true,
-      "risk_tiered_routing": true
+      "risk_tiered_routing": true,
+      "hybrid_provider": false,
+      "openai_adapter": false,
+      "hybrid_routing": false
     }
   },
   "account_quota_admission": {
@@ -46,6 +49,13 @@
     "difference_first_review": true,
     "targeted_review_model": "sonnet",
     "final_regression_model": "opus"
+  },
+  "hybrid_provider": {
+    "luna_model": "gpt-5.6-luna",
+    "allowed_routes": ["targeted_low_risk_read_only_gate"],
+    "require_billing_gateway": true,
+    "require_spend_lease": true,
+    "allow_isolated_write": false
   },
   "complexity_control": {
     "enabled": true,
