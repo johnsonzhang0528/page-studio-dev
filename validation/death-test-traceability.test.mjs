@@ -18,7 +18,8 @@ const checks={
   findings:{argv:['validation/gate-findings.test.mjs'],marker:'GATE_FINDINGS_SMOKE_OK'},
   mutation:{argv:['validation/workflow-optimization-mutation.test.mjs'],marker:'"killed": 22'},
   secret:{argv:['validation/secret-scan.test.mjs'],marker:'SECRET_SCAN_TESTS_OK'},
-  tool_broker_escape:{argv:['validation/tool-broker-escape-death.test.mjs'],marker:'TOOL_BROKER_ESCAPE_DEATH_TESTS_OK'}
+  tool_broker_escape:{argv:['validation/tool-broker-escape-death.test.mjs'],marker:'TOOL_BROKER_ESCAPE_DEATH_TESTS_OK'},
+  service_isolation:{argv:['validation/service-isolation-death.test.mjs'],marker:'SERVICE_ISOLATION_DEATH_TESTS_OK'}
 };
 const ranges=(from,to,workPackage,executables)=>Array.from({length:to-from+1},(_,index)=>({id:`DT-${String(from+index).padStart(3,'0')}`,work_package:workPackage,executables}));
 const cases=[
@@ -28,11 +29,11 @@ const cases=[
   ...ranges(28,28,'WP-01',['architecture']), ...ranges(29,30,'WP-10',['parallel']), ...ranges(31,32,'WP-05',['concurrency']),
   ...ranges(33,33,'WP-06',['durable']), ...ranges(34,34,'WP-07/WP-01',['quality']), ...ranges(35,41,'WP-01/WP-02',['architecture','quality']),
   ...ranges(42,44,'WP-09',['findings']), ...ranges(45,45,'WP-01',['mutation']), ...ranges(46,46,'WP-05/WP-12',['concurrency','secret']),
-  ...ranges(47,53,'WP-13',['tool_broker_escape'])
+  ...ranges(47,53,'WP-13',['tool_broker_escape']), ...ranges(54,61,'WP-14',['service_isolation'])
 ];
 
-assert.equal(cases.length,53);
-assert.deepEqual(cases.map(item=>item.id),Array.from({length:53},(_,index)=>`DT-${String(index+1).padStart(3,'0')}`));
+assert.equal(cases.length,61);
+assert.deepEqual(cases.map(item=>item.id),Array.from({length:61},(_,index)=>`DT-${String(index+1).padStart(3,'0')}`));
 const required=[...new Set(cases.flatMap(item=>item.executables))],results=new Map();
 for(const name of required){
   const check=checks[name]; assert.ok(check,`UNKNOWN_EXECUTABLE_EVIDENCE:${name}`);

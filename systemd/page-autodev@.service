@@ -23,6 +23,8 @@ ProtectHostname=true
 ProtectKernelLogs=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
+ProtectProc=invisible
+ProcSubset=pid
 RestrictNamespaces=true
 RestrictRealtime=true
 RestrictSUIDSGID=true
@@ -31,7 +33,9 @@ CapabilityBoundingSet=
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 UMask=0077
-ReadWritePaths=%h/page-studio-dev/projects/%i %h/.cache %h/.config
+ReadOnlyPaths=%h/page-studio-dev %h/.local/bin/claude %h/.claude %h/.config/page-autodev/telegram.env
+ReadWritePaths=%h/page-studio-dev/projects/%i %h/.cache/claude
+InaccessiblePaths=%h/.ssh %h/.aws %h/.azure %h/.kube %h/.docker %h/.gnupg
 
 [Install]
 WantedBy=default.target
