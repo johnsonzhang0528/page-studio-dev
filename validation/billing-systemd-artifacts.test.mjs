@@ -6,6 +6,7 @@ const gatewaySocket=read('page-autodev-billing-gateway.socket');
 const gatewayService=read('page-autodev-billing-gateway.service');
 const egressSocket=read('page-autodev-openai-egress.socket');
 const egressService=read('page-autodev-openai-egress.service');
+const gatewayDaemon=fs.readFileSync(new URL('../bin/page-autodev-billing-gateway-daemon.mjs',import.meta.url),'utf8');
 
 for(const [name,text] of Object.entries({gatewaySocket,gatewayService,egressSocket,egressService})){
   assert.match(text,/^\[Unit\]$/m,`${name} missing Unit`);
@@ -27,5 +28,9 @@ assert.match(egressService,/^LoadCredential=egress_policy:/m);
 assert.match(egressService,/^LoadCredential=gateway_assertion_secret:/m);
 assert.match(egressService,/^LoadCredential=openai_api_key:/m);
 assert.doesNotMatch(gatewayService,/LoadCredential=.*openai/i);
+for(const credential of ['gateway_runtime_config','gateway_credential_secret','gateway_assertion_secret'])assert.match(gatewayService,new RegExp(`^LoadCredential=${credential}:`,'m'));
+assert.match(gatewayService,/^StateDirectory=page-autodev-billing-gateway$/m);assert.match(gatewayService,/^StateDirectoryMode=0700$/m);
+assert.match(gatewayDaemon,/createBillingGatewayRuntime/);assert.match(gatewayDaemon,/createBillingEgressUnixClient/);assert.doesNotMatch(gatewayDaemon,/BILLING_CONTROL_UNAVAILABLE|handler:\s*unavailable/);
+assert.doesNotMatch(gatewayDaemon,/openai_api_key|OPENAI_API_KEY/);
 
 console.log('BILLING_SYSTEMD_ARTIFACT_TESTS_OK');
