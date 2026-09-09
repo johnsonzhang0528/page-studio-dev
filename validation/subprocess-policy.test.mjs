@@ -5,7 +5,7 @@ const env=safeSubprocessEnv({PATH:'/bin',HOME:'/tmp/home',LANG:'C',ANTHROPIC_API
 assert.deepEqual(env,{HOME:'/tmp/home',PATH:'/bin',LANG:'C',CI:'1'});
 assert.equal(Object.values(env).some(value=>/anthropic-secret|telegram-secret|admin:pw/.test(value)),false);
 
-const output=redactSecrets('Authorization=Bearer abc.def token=plain-secret password=hunter2 postgresql://admin:s3cr3t@db/app\n-----BEGIN PRIVATE KEY-----\nprivate material\n-----END PRIVATE KEY-----');
-for(const secret of ['abc.def','plain-secret','hunter2','s3cr3t','private material']) assert.equal(output.includes(secret),false,`${secret} must be redacted`);
+const output=redactSecrets('Authorization=Bearer abc.def token=plain-secret password=hunter2 {"token":"json-secret","api_key":"json-key"} postgresql://admin:s3cr3t@db/app\n-----BEGIN PRIVATE KEY-----\nprivate material\n-----END PRIVATE KEY-----');
+for(const secret of ['abc.def','plain-secret','hunter2','json-secret','json-key','s3cr3t','private material']) assert.equal(output.includes(secret),false,`${secret} must be redacted`);
 assert.match(output,/\[REDACTED/);
 console.log('SUBPROCESS_POLICY_TESTS_OK');

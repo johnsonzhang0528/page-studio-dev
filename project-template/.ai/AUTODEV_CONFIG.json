@@ -4,6 +4,21 @@
   "model": "sonnet",
   "effort": "high",
   "fallback_model": "sonnet",
+  "rollout": {
+    "mode": "shadow",
+    "features": {
+      "quota_coordinator": true,
+      "compact_handoff": true,
+      "architecture_ir": true,
+      "risk_tiered_routing": true
+    }
+  },
+  "account_quota_admission": {
+    "enabled": true,
+    "max_concurrent": 1,
+    "five_hour_floor": 3,
+    "seven_day_floor": 5
+  },
   "stage_models": {
     "input_analysis": { "model": "sonnet", "effort": "medium" },
     "requirements": { "model": "sonnet", "effort": "high" },
@@ -82,7 +97,8 @@
     "resume_same_work_unit": true,
     "phase_scoped_context": true,
     "markdown_first": true,
-    "auto_compact_percent": 80
+    "auto_compact_percent": 80,
+    "compact_handoff": { "enabled": true, "max_bytes": 4096 }
   },
   "work_units": {
     "enabled": true,
@@ -93,6 +109,7 @@
     "max_repair_attempts_per_unit": 2
   },
   "workflow_efficiency": {
+    "architecture_ir": { "enabled": true },
     "semantic_freeze_before_render": true,
     "full_visual_check_final_only": true,
     "architecture_visual_delivery": "final_only",

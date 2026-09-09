@@ -14,5 +14,10 @@ for(const invalid of [
   {...valid,checks:[{...valid.checks[0],timeout_ms:999}]},
   {...valid,checks:[{...valid.checks[0],required:false}]}
 ]) assert.ok(validateQualityContract(invalid));
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'quality-contract-')); try{ fs.mkdirSync(path.join(root,'.ai')); fs.writeFileSync(path.join(root,'.ai','QUALITY_CONTRACT.json'),JSON.stringify(valid)); const loaded=loadQualityContract(root); assert.equal(loaded.ok,true); assert.deepEqual(qualityContractCommands(root,loaded.contract)[0].args,['test']); }finally{fs.rmSync(root,{recursive:true,force:true});}
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'quality-contract-')); try{
+  fs.mkdirSync(path.join(root,'.ai')); fs.writeFileSync(path.join(root,'.ai','QUALITY_CONTRACT.json'),JSON.stringify(valid));
+  const loaded=loadQualityContract(root); assert.equal(loaded.ok,true);
+  const missing=qualityContractCommands(root,loaded.contract)[0]; assert.deepEqual(missing.args,['test']); assert.match(missing.prerequisite_error,/PACKAGE_MISSING/,'不得向父目錄借用 package.json');
+  fs.writeFileSync(path.join(root,'package.json'),JSON.stringify({scripts:{test:'node --test'}})); assert.equal(qualityContractCommands(root,loaded.contract)[0].prerequisite_error,undefined);
+}finally{fs.rmSync(root,{recursive:true,force:true});}
 console.log('QUALITY_CONTRACT_TESTS_OK');
