@@ -7,11 +7,13 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const controller=fileURLToPath(new URL('../lib/autodev.mjs',import.meta.url));
+const controllerRoot=path.resolve(path.dirname(controller),'..');
 const projectsRoot=process.env.SHADOW_SOAK_SOURCE_ROOT??path.join(os.homedir(),'page-studio-dev','projects');
 const projects=(process.env.SHADOW_SOAK_PROJECTS??'test-project,seo-empire').split(',').map(value=>value.trim()).filter(Boolean);
 const durationMs=Number(process.env.SHADOW_SOAK_DURATION_MS??24*60*60*1000);
 const intervalMs=Number(process.env.SHADOW_SOAK_INTERVAL_MS??5*60*1000);
 const outputPath=process.env.SHADOW_SOAK_OUTPUT??'/tmp/page-autodev-shadow-soak.jsonl';
+const resilienceScenarios=(process.env.SHADOW_SOAK_SCENARIOS??'quota,state,durable,parallel,controller').split(',').map(value=>value.trim()).filter(Boolean);
 assert.ok(Number.isFinite(durationMs)&&durationMs>=0,'SHADOW_SOAK_DURATION_MS 必須是非負數');
 assert.ok(Number.isFinite(intervalMs)&&intervalMs>0,'SHADOW_SOAK_INTERVAL_MS 必須是正數');
 
@@ -28,6 +30,25 @@ function manifest(root){
   return filesUnder(root).map(file=>({path:path.relative(root,file),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}));
 }
 function append(record){ fs.appendFileSync(outputPath,`${JSON.stringify(record)}\n`); }
+const scenarioCommands={
+  quota:['validation/quota-coordinator.test.mjs'],
+  state:['validation/state-transition-property.test.mjs'],
+  durable:['validation/durable-crash-matrix.test.mjs'],
+  parallel:['validation/parallel-crash-matrix.test.mjs'],
+  controller:['lib/autodev.mjs','self-test']
+};
+function residueSnapshot(){
+  return new Set(fs.readdirSync(os.tmpdir()).filter(name=>/^(page-autodev-(?:state|tx|parallel|shadow|death|property|selftest|git-checkpoint)-)/.test(name)));
+}
+function runResilienceScenario(name){
+  const argv=scenarioCommands[name]; assert.ok(argv,`UNKNOWN_SOAK_SCENARIO:${name}`);
+  const before=residueSnapshot(),started=Date.now(),run=spawnSync(process.execPath,argv,{cwd:controllerRoot,encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});
+  assert.equal(run.error,undefined,`${name} 無法執行：${run.error?.message??''}`);
+  assert.equal(run.status,0,`${name} 故障注入失敗：${String(run.stderr||run.stdout).slice(-4000)}`);
+  const after=residueSnapshot(),added=[...after].filter(item=>!before.has(item));
+  assert.deepEqual(added,[],`${name} 留下 orphan temp workspace：${added.join(',')}`);
+  return {ok:true,elapsed_ms:Date.now()-started};
+}
 function evaluateOnce(project){
   const temporaryRoot=fs.mkdtempSync(path.join(os.tmpdir(),'page-autodev-shadow-'));
   assert.ok(path.resolve(temporaryRoot).startsWith(path.resolve(os.tmpdir())+path.sep));
@@ -55,11 +76,12 @@ function evaluate(project){
 }
 
 const startedAt=Date.now(); let samples=0;
-append({event:'start',started_at:new Date(startedAt).toISOString(),duration_ms:durationMs,interval_ms:intervalMs,projects,mode:'disposable_snapshot'});
+append({event:'start',started_at:new Date(startedAt).toISOString(),duration_ms:durationMs,interval_ms:intervalMs,projects,mode:'mixed_resilience_disposable_snapshot',resilience_scenarios:resilienceScenarios});
 try {
   while(true){
     const decisions=Object.fromEntries(projects.map(project=>[project,evaluate(project)]));
-    samples+=1; append({event:'sample',at:new Date().toISOString(),sample:samples,decisions});
+    const resilience=Object.fromEntries(resilienceScenarios.map(name=>[name,runResilienceScenario(name)]));
+    samples+=1; append({event:'sample',at:new Date().toISOString(),sample:samples,decisions,resilience});
     const remaining=durationMs-(Date.now()-startedAt); if(remaining<=0) break;
     await new Promise(resolve=>setTimeout(resolve,Math.min(intervalMs,remaining)));
   }
