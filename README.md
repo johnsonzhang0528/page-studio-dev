@@ -185,12 +185,16 @@ Archify 圖表不再以單一大任務同時完成所有工作。每張圖預先
 既有專案與文件維護：
 
 ```bash
-page-autodev migrate-workflow <專案名稱>  # 保留已完成成果，只補新版工作單元
+page-autodev migration-report <專案名稱> # 唯讀盤點；輸出可重現的 inventory SHA
+page-autodev migrate-workflow <專案名稱> # dry-run；只列出預計動作，不寫入
+page-autodev migrate-workflow-apply <專案名稱> # 無 active lease/transaction 時先備份再套用
+page-autodev rollback-workflow-migration <專案名稱> <migration-id> # 只還原 controller state
 page-autodev slim-docs <專案名稱>         # 只預覽可移除的回合／修訂歷程
 page-autodev slim-docs-apply <專案名稱>   # 封存原文後套用，並建立 Git 還原點
 ```
 
 文件封存位於 `.ai/archive/document-slim/`；架構正文、決策表、需求、原始輸入與驗證證據不會被瘦身器刪除。
+完整 canary、停止條件、證據保留與 rollback 步驟見 `docs/OPERATOR_RUNBOOK.md`。新 Project 由 `.ai/QUALITY_CONTRACT.json` 宣告版本化品質命令；不得使用 shell 字串或省略必要測試。
 
 查看工作單元：
 

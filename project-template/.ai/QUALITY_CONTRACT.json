@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "project_type": "auto",
+  "required_capabilities": ["test"],
+  "checks": [
+    { "id": "lint", "required": false, "argv": ["npm", "run", "lint"], "timeout_ms": 900000, "cwd": "." },
+    { "id": "typecheck", "required": false, "argv": ["npm", "run", "typecheck"], "timeout_ms": 900000, "cwd": "." },
+    { "id": "test", "required": true, "argv": ["npm", "test"], "timeout_ms": 1200000, "cwd": "." },
+    { "id": "build", "required": false, "argv": ["npm", "run", "build"], "timeout_ms": 1200000, "cwd": "." }
+  ],
+  "allow_shell": false,
+  "receipt_required": true
+}
