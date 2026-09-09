@@ -14,4 +14,8 @@ assert.throws(()=>createBillingGatewayCredentialAuthority({secret:'weak'}),error
 assert.throws(()=>authority.issue({...claims,ttl_ms:900001}),error=>error.code==='BILLING_GATEWAY_CREDENTIAL_DENIED');
 const tampered=`${token.slice(0,-1)}${token.endsWith('a')?'b':'a'}`;
 assert.throws(()=>authority.consume(tampered,claims),error=>error.code==='BILLING_GATEWAY_CREDENTIAL_DENIED');
+const reservationClaims={invocation_id:'inv-2',request_sha256:'b'.repeat(64),work_unit_budget_id:'unit-1',priority:'P1',canary_wave:'wave-a'};
+const reservationToken=authority.issueReservation(reservationClaims);
+assert.equal(authority.consumeReservation(reservationToken,reservationClaims).purpose,'reservation');
+assert.throws(()=>authority.consumeReservation(authority.issueReservation(reservationClaims),{...reservationClaims,priority:'P2'}),error=>error.code==='BILLING_GATEWAY_CREDENTIAL_DENIED');
 console.log('BILLING_GATEWAY_CREDENTIAL_TESTS_OK');
