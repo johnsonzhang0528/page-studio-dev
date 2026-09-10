@@ -49,5 +49,12 @@ for(const name of required){
   assert.ok(output.includes(check.marker),`${name} success marker missing after real execution: ${check.marker}`);
   results.set(name,{status:run.status,marker:check.marker,output});
 }
-for(const item of cases) for(const name of item.executables){const result=results.get(name);assert.equal(result?.status,0,`${item.id} executable evidence failed: ${name}`);assert.ok(result.output.includes(`DEATH_EVIDENCE ${item.id} `),`${item.id} unique executable evidence missing from ${name}`);}
-console.log(JSON.stringify({ok:true,total:cases.length,individually_evidenced:cases.length,executed_checks:required.length,mode:'unique_executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id}));
+const evidence=[];
+for(const item of cases) for(const name of item.executables){
+  const result=results.get(name);assert.equal(result?.status,0,`${item.id} executable evidence failed: ${name}`);
+  const pattern=new RegExp(`^DEATH_EVIDENCE ${item.id} ([a-z0-9_]+)$`,'gm'),matches=[...result.output.matchAll(pattern)];
+  assert.equal(matches.length,1,`${item.id} must produce exactly one named executable evidence record in ${name}`);
+  evidence.push({id:item.id,work_package:item.work_package,executable:name,scenario:matches[0][1]});
+}
+assert.equal(new Set(evidence.map(item=>item.id)).size,cases.length,'death evidence IDs must be unique');
+console.log(JSON.stringify({ok:true,total:cases.length,individually_evidenced:evidence.length,executed_checks:required.length,mode:'unique_named_executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id,evidence}));
