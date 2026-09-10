@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+import { createBillingGatewayCredentialAuthority } from '../lib/billing-gateway-credential.mjs';
+
+const credentialRoot=process.env.CREDENTIALS_DIRECTORY,output=process.env.CONTROLLER_CREDENTIAL_OUTPUT,generation=process.env.CONTROLLER_CREDENTIAL_GENERATION??'current',ttl=Number(process.env.CONTROLLER_CREDENTIAL_TTL_MS??86400000);
+if(!credentialRoot||!path.isAbsolute(credentialRoot)||!output||!path.isAbsolute(output))throw new Error('CONTROLLER_CREDENTIAL_PROVISIONING_CONFIG_REQUIRED');
+const secret=fs.readFileSync(path.join(credentialRoot,'gateway_credential_secret')),authority=createBillingGatewayCredentialAuthority({secret,controller_credential_policy:{accepted_generations:[generation],revoked_before_ms:0,max_ttl_ms:2592000000}}),token=authority.issueControllerCredential({generation,ttl_ms:ttl}),temporary=`${output}.${process.pid}.tmp`;
+fs.mkdirSync(path.dirname(output),{recursive:true,mode:0o700});try{fs.writeFileSync(temporary,`${token}\n`,{mode:0o600,flag:'wx'});fs.renameSync(temporary,output);}finally{fs.rmSync(temporary,{force:true});}
+process.stdout.write(JSON.stringify({ok:true,generation,output,ttl_ms:ttl})+'\n');

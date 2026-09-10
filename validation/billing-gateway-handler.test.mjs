@@ -8,10 +8,11 @@ const token=authority.issue({invocation_id:spec.invocation_id,lease_id:lease,req
 const handler=createBillingGatewayHandler({policy,credentialAuthority:authority,clock:()=>now,adapter:{async invoke(received,options){calls+=1;assert.deepEqual(received,spec);assert.equal(options.spend_lease_id,lease);return {outcome:'success'};}}});
 const request={method:'POST',path:'/v1/dispatch',content_type:'application/json',body:Buffer.from(JSON.stringify({credential:token,spec,spend_lease_id:lease}))};
 assert.equal((await handler(request)).outcome,'success');assert.equal(calls,1);
-const reserveSpec={invocation_id:'inv-reserve',idempotency_key:'idem-reserve',objective:'fixture'},reserveClaims={invocation_id:reserveSpec.invocation_id,request_sha256:billingGatewayRequestDigest(reserveSpec),work_unit_budget_id:'unit-1',priority:'P2',canary_wave:'wave-a'},reserveToken=authority.issueReservation(reserveClaims),reserved=[];
+const reserveSpec={invocation_id:'inv-reserve',idempotency_key:'idem-reserve',objective:'fixture'},reserveClaims={invocation_id:reserveSpec.invocation_id,request_sha256:billingGatewayRequestDigest(reserveSpec),work_unit_budget_id:'unit-1',priority:'P2',canary_wave:'wave-a'},reserveToken=authority.issueControllerCredential(),reserved=[];
 const control=createBillingGatewayHandler({policy,credentialAuthority:authority,clock:()=>now,billingAuthorizer:{reserve(received,options){reserved.push({received,options});return {lease_id:'lease-reserved',reserved_microusd:10};}},adapter:{async invoke(){return {outcome:'success'};}}});
 const admission=await control({method:'POST',path:'/v1/reserve',content_type:'application/json',body:Buffer.from(JSON.stringify({credential:reserveToken,spec:reserveSpec,work_unit_budget_id:'unit-1',priority:'P2',canary_wave:'wave-a'}))});
 assert.equal(admission.reservation.lease_id,'lease-reserved');assert.equal(typeof admission.credential,'string');assert.equal(reserved.length,1);
+const second=await control({method:'POST',path:'/v1/reserve',content_type:'application/json',body:Buffer.from(JSON.stringify({credential:reserveToken,spec:{...reserveSpec,invocation_id:'inv-reserve-2'},work_unit_budget_id:'unit-2',priority:'P2',canary_wave:'wave-a'}))});assert.equal(second.reservation.lease_id,'lease-reserved','controller workload credential must survive more than one reservation');
 authority.consume(admission.credential,{invocation_id:reserveSpec.invocation_id,lease_id:'lease-reserved',request_sha256:billingGatewayRequestDigest(reserveSpec)});
 for(const candidate of [
   {...request,method:'GET'},

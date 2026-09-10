@@ -18,4 +18,6 @@ const reservationClaims={invocation_id:'inv-2',request_sha256:'b'.repeat(64),wor
 const reservationToken=authority.issueReservation(reservationClaims);
 assert.equal(authority.consumeReservation(reservationToken,reservationClaims).purpose,'reservation');
 assert.throws(()=>authority.consumeReservation(authority.issueReservation(reservationClaims),{...reservationClaims,priority:'P2'}),error=>error.code==='BILLING_GATEWAY_CREDENTIAL_DENIED');
+const workload=authority.issueControllerCredential({generation:'current',ttl_ms:60000});assert.equal(authority.verifyControllerCredential(workload).generation,'current');assert.equal(authority.verifyControllerCredential(workload).generation,'current','workload credential is reusable for reservation admission only');
+const rotated=createBillingGatewayCredentialAuthority({secret,clock:()=>now,controller_credential_policy:{accepted_generations:['next'],revoked_before_ms:now,max_ttl_ms:86400000}});assert.throws(()=>rotated.verifyControllerCredential(workload),error=>error.code==='BILLING_GATEWAY_CREDENTIAL_DENIED');const next=rotated.issueControllerCredential({generation:'next',ttl_ms:60000});assert.equal(rotated.verifyControllerCredential(next).generation,'next');
 console.log('BILLING_GATEWAY_CREDENTIAL_TESTS_OK');
