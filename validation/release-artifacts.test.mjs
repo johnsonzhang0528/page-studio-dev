@@ -19,4 +19,6 @@ const readonly=service.match(/^ReadOnlyPaths=(.*)$/m)?.[1]??'';assert.ok(readonl
 const inaccessible=service.match(/^InaccessiblePaths=(.*)$/m)?.[1]??'';for(const secretHome of ['%h/.ssh','%h/.aws','%h/.kube','%h/.docker','%h/.gnupg'])assert.ok(inaccessible.includes(secretHome));
 const runbook=fs.readFileSync(new URL('../docs/OPERATOR_RUNBOOK.md',import.meta.url),'utf8'),readme=fs.readFileSync(new URL('../README.md',import.meta.url),'utf8');
 for(const command of ['migration-report','migrate-workflow-apply','rollback-workflow-migration']) assert.ok(runbook.includes(command)&&readme.includes(command),`${command} must be documented`);
+for(const command of ['validate:billing-config','page-autodev-issue-controller-credential','page-autodev-openai-tunnel.socket']) assert.ok(runbook.includes(command),`${command} must be documented in the operator runbook`);
+for(const topic of ['accepted_generations','revoked_before_ms','do not restart the controller']) assert.ok(runbook.includes(topic),`${topic} lifecycle rule must be documented`);
 console.log('RELEASE_ARTIFACTS_TESTS_OK');

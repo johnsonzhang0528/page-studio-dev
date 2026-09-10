@@ -35,3 +35,24 @@ For controller code, switch back to the previous reviewed controller commit and 
 - crash, mutation, property and soak receipts
 - secret-scan result and systemd security snapshot
 - three end-to-end canary receipts
+
+## Billing Gateway activation (non-production canary only)
+
+1. Keep `allow_deploy=false` and the egress policy `activation=disabled` while preparing credentials.
+2. Build `gateway-runtime.json` from an operator-reviewed price source. Every enabled model snapshot must have a currently effective price entry; never use fixture, guessed, zero, or expired rates.
+3. Run `npm run validate:billing-config -- /path/to/gateway-runtime.json`. A failure blocks activation.
+4. Install the API key only as the `openai_api_key` systemd credential for the egress service. The controller and Billing Gateway must never receive or read it.
+5. Start sockets before services in this order: `page-autodev-openai-tunnel.socket`, `page-autodev-openai-egress.socket`, then `page-autodev-billing-gateway.socket`. Validate isolation before enabling any canary request.
+6. Activate only an approved model snapshot and one low-risk, read-only canary route. Redirects, retries, fallback destinations, shell, writes and direct network access remain disabled.
+
+### Controller credential rotation
+
+Generate a reusable controller admission credential offline with `page-autodev-issue-controller-credential`. The active generation must appear in `controller_credential_policy.accepted_generations`; `max_ttl_ms` may not exceed 30 days.
+
+For overlap rotation, add the next generation to `accepted_generations`, validate and restart only the Billing Gateway, issue and atomically install the new controller credential, then restart the selected canary controller. After confirmation, remove the old generation and restart only the Billing Gateway. Normal rotation does not require the egress API key to move or change.
+
+For emergency revocation, first disable the canary route and egress activation. Set `revoked_before_ms` to the incident cutoff and replace `accepted_generations` with a new generation. Restart the Billing Gateway, issue a new controller credential, and do not restart the controller until the incident scope, pending leases and reconciliation state have been reviewed. Never clear a global billing hold merely to resume traffic.
+
+### Stop and recovery order
+
+Stop controllers first, then Billing Gateway, egress broker and fixed tunnel. Preserve billing state, pending outbox records, request IDs and reconciliation evidence. A request with unknown provider outcome remains charged/reserved and must not be replayed under a new identity.

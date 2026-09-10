@@ -11,6 +11,7 @@
     "test:death": "node lib/autodev.mjs self-test && node validation/concurrency-death-tests.mjs && node validation/durable-crash-matrix.test.mjs && node validation/parallel-crash-matrix.test.mjs",
     "test:property": "node validation/state-transition-property.test.mjs",
     "test:mutation": "node validation/workflow-optimization-mutation.test.mjs",
-    "test:secret": "node validation/secret-scan.mjs"
+    "test:secret": "node validation/secret-scan.mjs",
+    "validate:billing-config": "node bin/page-autodev-validate-billing-config.mjs"
   }
 }
