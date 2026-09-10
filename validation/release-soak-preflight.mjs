@@ -10,7 +10,11 @@ const run=(root,args)=>{const result=spawnSync('git',['-C',root,...args],{encodi
 const checks=[];const check=(id,ok,evidence)=>checks.push({id,ok:Boolean(ok),evidence});
 check('root:separate',candidate!==live&&!candidate.startsWith(live+path.sep)&&!live.startsWith(candidate+path.sep),{candidate,live});
 const candidateHead=run(candidate,['rev-parse','HEAD']),liveHead=run(live,['rev-parse','HEAD']);
-check('candidate:branch',run(candidate,['branch','--show-current'])==='codex/workflow-integrated-rc-20260909',run(candidate,['branch','--show-current']));
+const candidateBranch=run(candidate,['branch','--show-current']),expectedBranch=process.env.RELEASE_CANDIDATE_EXPECTED_BRANCH??'',expectedHead=process.env.RELEASE_CANDIDATE_EXPECTED_HEAD??'';
+check('candidate:expected-branch-configured',expectedBranch.length>0,expectedBranch||null);
+check('candidate:branch',expectedBranch.length>0&&candidateBranch===expectedBranch,{expected:expectedBranch||null,actual:candidateBranch});
+check('candidate:expected-head-configured',/^[a-f0-9]{40}$/.test(expectedHead),expectedHead||null);
+check('candidate:frozen-head',expectedHead.length===40&&candidateHead===expectedHead,{expected:expectedHead||null,actual:candidateHead});
 check('candidate:clean',run(candidate,['status','--porcelain=v1'])==='',candidateHead);
 check('live:clean',run(live,['status','--porcelain=v1'])==='',liveHead);
 if(process.env.RELEASE_LIVE_EXPECTED_HEAD)check('live:frozen-head',liveHead===process.env.RELEASE_LIVE_EXPECTED_HEAD,{expected:process.env.RELEASE_LIVE_EXPECTED_HEAD,actual:liveHead});
