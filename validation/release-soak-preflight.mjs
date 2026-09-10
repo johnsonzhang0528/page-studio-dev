@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+const candidate=fs.realpathSync(process.env.RELEASE_CANDIDATE_ROOT??process.cwd()),live=fs.realpathSync(process.env.RELEASE_LIVE_ROOT??path.join(os.homedir(),'page-studio-dev'));
+const run=(root,args)=>{const result=spawnSync('git',['-C',root,...args],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);return result.stdout.trim();};
+const checks=[];const check=(id,ok,evidence)=>checks.push({id,ok:Boolean(ok),evidence});
+check('root:separate',candidate!==live&&!candidate.startsWith(live+path.sep)&&!live.startsWith(candidate+path.sep),{candidate,live});
+const candidateHead=run(candidate,['rev-parse','HEAD']),liveHead=run(live,['rev-parse','HEAD']);
+check('candidate:branch',run(candidate,['branch','--show-current'])==='codex/workflow-integrated-rc-20260909',run(candidate,['branch','--show-current']));
+check('candidate:clean',run(candidate,['status','--porcelain=v1'])==='',candidateHead);
+check('live:clean',run(live,['status','--porcelain=v1'])==='',liveHead);
+if(process.env.RELEASE_LIVE_EXPECTED_HEAD)check('live:frozen-head',liveHead===process.env.RELEASE_LIVE_EXPECTED_HEAD,{expected:process.env.RELEASE_LIVE_EXPECTED_HEAD,actual:liveHead});
+const sensitive=Object.keys(process.env).filter(name=>/^(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|CLAUDE_API_KEY|TELEGRAM_BOT_TOKEN)$/i.test(name));check('credentials:not-in-environment',sensitive.length===0,sensitive);
+const stat=fs.statfsSync(candidate);check('resource:disk',Number(stat.bavail)/Number(stat.blocks)>=0.20,Number(stat.bavail)/Number(stat.blocks));check('resource:inode',Number(stat.ffree)/Number(stat.files)>=0.10,Number(stat.ffree)/Number(stat.files));
+for(const relative of ['validation/shadow-soak.mjs','validation/isolated-project-flows.test.mjs','validation/death-test-traceability.test.mjs','validation/hybrid-controller-death.test.mjs','validation/tool-broker-escape-death.test.mjs'])check(`artifact:${relative}`,fs.existsSync(path.join(candidate,relative)),relative);
+const failures=checks.filter(item=>!item.ok),receipt={schema_version:1,kind:'release_soak_preflight',created_at:new Date().toISOString(),candidate_head:candidateHead,live_head:liveHead,decision:failures.length?'DENY':'ALLOW_ISOLATED_SOAK',checks,failures:failures.map(item=>item.id)};receipt.sha256=crypto.createHash('sha256').update(JSON.stringify(receipt)).digest('hex');
+const output=process.env.RELEASE_PREFLIGHT_OUTPUT??path.join(os.tmpdir(),`page-autodev-release-preflight-${process.pid}.json`);fs.writeFileSync(output,`${JSON.stringify(receipt,null,2)}\n`,{mode:0o600});console.log(JSON.stringify({decision:receipt.decision,receipt:output,checks:checks.length,failures:receipt.failures},null,2));assert.equal(receipt.decision,'ALLOW_ISOLATED_SOAK');

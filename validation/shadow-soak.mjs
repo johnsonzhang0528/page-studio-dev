@@ -13,7 +13,7 @@ const projects=(process.env.SHADOW_SOAK_PROJECTS??'test-project,seo-empire').spl
 const durationMs=Number(process.env.SHADOW_SOAK_DURATION_MS??24*60*60*1000);
 const intervalMs=Number(process.env.SHADOW_SOAK_INTERVAL_MS??5*60*1000);
 const outputPath=process.env.SHADOW_SOAK_OUTPUT??'/tmp/page-autodev-shadow-soak.jsonl';
-const resilienceScenarios=(process.env.SHADOW_SOAK_SCENARIOS??'quota,state,durable,parallel,controller').split(',').map(value=>value.trim()).filter(Boolean);
+const resilienceScenarios=(process.env.SHADOW_SOAK_SCENARIOS??'quota,state,durable,parallel,controller,hybrid,isolation,migration').split(',').map(value=>value.trim()).filter(Boolean);
 assert.ok(Number.isFinite(durationMs)&&durationMs>=0,'SHADOW_SOAK_DURATION_MS 必須是非負數');
 assert.ok(Number.isFinite(intervalMs)&&intervalMs>0,'SHADOW_SOAK_INTERVAL_MS 必須是正數');
 
@@ -35,7 +35,10 @@ const scenarioCommands={
   state:['validation/state-transition-property.test.mjs'],
   durable:['validation/durable-crash-matrix.test.mjs'],
   parallel:['validation/parallel-crash-matrix.test.mjs'],
-  controller:['lib/autodev.mjs','self-test']
+  controller:['lib/autodev.mjs','self-test'],
+  hybrid:['validation/hybrid-controller-death.test.mjs'],
+  isolation:['validation/tool-broker-escape-death.test.mjs'],
+  migration:['validation/isolated-project-flows.test.mjs']
 };
 function residueSnapshot(){
   return new Set(fs.readdirSync(os.tmpdir()).filter(name=>/^(page-autodev-(?:state|tx|parallel|shadow|death|property|selftest|git-checkpoint)-)/.test(name)));
