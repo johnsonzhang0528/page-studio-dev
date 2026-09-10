@@ -6,9 +6,12 @@ const gatewaySocket=read('page-autodev-billing-gateway.socket');
 const gatewayService=read('page-autodev-billing-gateway.service');
 const egressSocket=read('page-autodev-openai-egress.socket');
 const egressService=read('page-autodev-openai-egress.service');
+const tunnelSocket=read('page-autodev-openai-tunnel.socket');
+const tunnelService=read('page-autodev-openai-tunnel.service');
 const gatewayDaemon=fs.readFileSync(new URL('../bin/page-autodev-billing-gateway-daemon.mjs',import.meta.url),'utf8');
+const tunnelDaemon=fs.readFileSync(new URL('../bin/page-autodev-openai-tunnel-daemon.mjs',import.meta.url),'utf8');
 
-for(const [name,text] of Object.entries({gatewaySocket,gatewayService,egressSocket,egressService})){
+for(const [name,text] of Object.entries({gatewaySocket,gatewayService,egressSocket,egressService,tunnelSocket,tunnelService})){
   assert.match(text,/^\[Unit\]$/m,`${name} missing Unit`);
   assert.doesNotMatch(text,/EnvironmentFile=|OPENAI_API_KEY|https:\/\//,`${name} leaks credential or remote endpoint`);
 }
@@ -17,13 +20,18 @@ for(const socket of [gatewaySocket,egressSocket]){
   assert.match(socket,/^SocketMode=0660$/m);
   assert.match(socket,/^RemoveOnStop=true$/m);
 }
+assert.match(tunnelSocket,/^Accept=no$/m);assert.match(tunnelSocket,/^RemoveOnStop=true$/m);
 for(const service of [gatewayService,egressService]){
   for(const rule of ['NoNewPrivileges=true','CapabilityBoundingSet=','RemoveIPC=true','PrivateDevices=true','PrivateNetwork=true','PrivateTmp=true','ProtectHome=true','ProtectProc=invisible','ProcSubset=pid','ProtectSystem=strict','RestrictNamespaces=true','RestrictSUIDSGID=true','LockPersonality=true','MemoryDenyWriteExecute=true','IPAddressDeny=any']) assert.match(service,new RegExp(`^${rule}$`,'m'));
   assert.match(service,/^RestrictAddressFamilies=AF_UNIX$/m);
   assert.doesNotMatch(service,/DynamicUser=true|User=root|Group=root/);
 }
+for(const rule of ['NoNewPrivileges=true','CapabilityBoundingSet=','PrivateDevices=true','PrivateTmp=true','ProtectHome=true','ProtectProc=invisible','ProcSubset=pid','ProtectSystem=strict','RestrictNamespaces=true','MemoryDenyWriteExecute=true'])assert.match(tunnelService,new RegExp(`^${rule}$`,'m'));
+assert.match(tunnelService,/^RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6$/m);assert.doesNotMatch(tunnelService,/LoadCredential=|EnvironmentFile=|OPENAI_API_KEY|ANTHROPIC|PrivateNetwork=true/);
+assert.match(tunnelDaemon,/createFixedTunnelServer/);assert.doesNotMatch(tunnelDaemon,/openai_api_key|authorization|Bearer|CREDENTIALS_DIRECTORY/i);
 assert.match(gatewaySocket,/^ListenStream=\/run\/page-autodev\/billing-gateway\.sock$/m);
 assert.match(egressSocket,/^ListenStream=\/run\/page-autodev\/openai-egress\.sock$/m);
+assert.match(tunnelSocket,/^ListenStream=\/run\/page-autodev\/openai-tunnel\.sock$/m);assert.match(tunnelSocket,/^SocketMode=0600$/m);
 assert.match(egressService,/^LoadCredential=egress_policy:/m);
 assert.match(egressService,/^LoadCredential=gateway_assertion_secret:/m);
 assert.match(egressService,/^LoadCredential=openai_api_key:/m);

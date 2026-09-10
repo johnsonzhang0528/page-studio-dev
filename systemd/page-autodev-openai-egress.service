@@ -1,7 +1,8 @@
 [Unit]
 Description=Page AutoDev OpenAI egress broker (disabled transport)
 Requires=page-autodev-openai-egress.socket
-After=page-autodev-openai-egress.socket
+After=page-autodev-openai-egress.socket page-autodev-openai-tunnel.socket
+Requires=page-autodev-openai-tunnel.socket
 
 [Service]
 Type=simple

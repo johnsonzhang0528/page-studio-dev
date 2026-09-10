@@ -1,0 +1,36 @@
+[Unit]
+Description=Page AutoDev credential-free fixed OpenAI tunnel
+Requires=page-autodev-openai-tunnel.socket
+After=page-autodev-openai-tunnel.socket network-online.target
+
+[Service]
+Type=simple
+User=page-autodev-openai-egress
+Group=page-autodev-openai-egress
+WorkingDirectory=/opt/page-autodev
+ExecStart=/usr/bin/node /opt/page-autodev/bin/page-autodev-openai-tunnel-daemon.mjs
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+CapabilityBoundingSet=
+RemoveIPC=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProcSubset=pid
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+UMask=0077

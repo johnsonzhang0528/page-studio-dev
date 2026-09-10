@@ -1,0 +1,15 @@
+[Unit]
+Description=Page AutoDev fixed OpenAI tunnel socket
+
+[Socket]
+ListenStream=/run/page-autodev/openai-tunnel.sock
+FileDescriptorName=openai-tunnel
+SocketUser=page-autodev-openai-egress
+SocketGroup=page-autodev-openai-egress
+SocketMode=0600
+DirectoryMode=0750
+RemoveOnStop=true
+Accept=no
+
+[Install]
+WantedBy=sockets.target
