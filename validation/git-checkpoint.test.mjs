@@ -7,5 +7,7 @@ git(['init','-q']); git(['config','user.name','Test']); git(['config','user.emai
 const count=()=>Number(git(['rev-list','--count','HEAD']).stdout.trim()); const before=count();
 fs.mkdirSync(path.join(project,'.ai','telemetry'),{recursive:true}); fs.writeFileSync(path.join(project,'.ai','PROJECT_STATE.json'),'{}\n'); fs.writeFileSync(path.join(project,'.ai','telemetry','usage.jsonl'),'{}\n');
 assert.ok(createGitCheckpoint(project,{},'runtime only')); assert.equal(count(),before); assert.match(git(['status','--short']).stdout,/\.ai/,'runtime 檔應保留於工作樹但不得提交');
+console.log('DEATH_EVIDENCE DT-007 runtime_not_committed');console.log('DEATH_EVIDENCE DT-008 controller_state_not_committed');
 fs.mkdirSync(path.join(project,'src')); fs.writeFileSync(path.join(project,'src','app.js'),'export const ok=true;\n'); const commit=createGitCheckpoint(project,{},'product'); assert.ok(commit); assert.equal(count(),before+1); assert.match(git(['show','--name-only','--format=','HEAD']).stdout,/src\/app\.js/); assert.doesNotMatch(git(['show','--name-only','--format=','HEAD']).stdout,/\.ai/);
+console.log('DEATH_EVIDENCE DT-009 authorized_product_checkpoint');console.log('DEATH_EVIDENCE DT-017 machine_owned_files_excluded');
 fs.rmSync(project,{recursive:true,force:true}); console.log('GIT_CHECKPOINT_TESTS_OK');

@@ -14,6 +14,7 @@ for(const stage of stages){
     assert.equal(actual,stages.indexOf(stage)<2?old:next,`${stage} 的 rename 邊界結果不符`);
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
 }
+console.log('DEATH_EVIDENCE DT-022 durable_state_crash_boundaries');
 
 for(const stage of stages){
   const project=fs.mkdtempSync(path.join(os.tmpdir(),`durable-tx-${stage}-`));
@@ -24,6 +25,7 @@ for(const stage of stages){
     if(json.length) { const pending=pendingTransactions(project); assert.equal(pending.length,1); assert.equal(pending[0].state,'PREPARED'); assert.equal(pending[0].source_manifest_fingerprint,'CRASH-MATRIX'); }
   } finally { fs.rmSync(project,{recursive:true,force:true}); }
 }
+console.log('DEATH_EVIDENCE DT-023 prepared_transaction_crash_boundaries');
 
 const lifecycleStages=['after_prepared','after_applying','after_apply_effect','after_applied','after_verifying','after_commit_effect','after_committed'];
 for(const stage of lifecycleStages){
@@ -45,4 +47,6 @@ for(const stage of lifecycleStages){
     assert.deepEqual(effects.finalized_findings,[record.transaction_id],`lifecycle ${stage} finding finalization 必須 exactly-once`);
   } finally { fs.rmSync(project,{recursive:true,force:true}); }
 }
+console.log('DEATH_EVIDENCE DT-024 lifecycle_recovery_converges');
+console.log('DEATH_EVIDENCE DT-033 transaction_effects_exactly_once');
 console.log(JSON.stringify({ok:true,stages,state_cases:stages.length,transaction_cases:stages.length,lifecycle_stages:lifecycleStages,lifecycle_cases:lifecycleStages.length},null,2));

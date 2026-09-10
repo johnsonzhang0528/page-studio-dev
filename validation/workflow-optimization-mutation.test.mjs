@@ -20,4 +20,5 @@ for(const mutant of mutants){
   throw new Error(`MUTANT_SURVIVED：${mutant.id}`);
 }
 assert.equal(killed,mutants.length);
+console.log('DEATH_EVIDENCE DT-045 gate_guard_mutations_killed');
 console.log(JSON.stringify({ok:true,total:mutants.length,killed,kill_rate_percent:100},null,2));

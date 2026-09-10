@@ -7,9 +7,14 @@ git(['init','-q']); git(['config','user.name','Test']); git(['config','user.emai
 const unit={id:'ARCH-GATE-TRACE',prompt:'review'}; saveGateCachePass(project,'architecture_gate',unit,{summary:'pass',evidence:[]},{verification_mode:'targeted',active_findings:['GF-B','GF-A']},policy);
 assert.equal(gateCacheProbe(project,'architecture_gate',unit,{verification_mode:'targeted',active_findings:['GF-A','GF-B']},policy).hit,true);
 assert.equal(gateCacheProbe(project,'architecture_gate',unit,{verification_mode:'targeted',active_findings:['GF-A']},policy).hit,false);
+console.log('DEATH_EVIDENCE DT-005 active_finding_identity_invalidates_cache');
 assert.equal(gateCacheProbe(project,'architecture_gate',unit,{verification_mode:'full',active_findings:[]},policy).hit,false);
+console.log('DEATH_EVIDENCE DT-006 gate_mode_invalidates_cache');
 fs.writeFileSync(path.join(project,'docs','architecture','ARCHITECTURE.md'),'v2\n'); const changed=gateCacheProbe(project,'architecture_gate',unit,{verification_mode:'targeted',active_findings:['GF-A','GF-B']},policy); assert.equal(changed.hit,false); assert.ok(changed.changed.includes('docs/architecture/ARCHITECTURE.md'));
+console.log('DEATH_EVIDENCE DT-010 source_content_invalidates_cache');
 assert.notEqual(gateArtifactManifest(project,'architecture_gate',unit,{},policy)['@policy'],gateArtifactManifest(project,'architecture_gate',unit,{}, {...policy,policy_fingerprint:'policy-b'})['@policy']);
+console.log('DEATH_EVIDENCE DT-011 policy_invalidates_cache');
 fs.writeFileSync(path.join(project,'.ai','GATE_CACHE.json'),'{broken'); assert.equal(gateCacheProbe(project,'architecture_gate',unit,{},policy).hit,false);
 assert.equal(fs.readdirSync(path.join(project,'.ai','quarantine','corrupt_rebuildable_cache')).filter(name=>name.endsWith('.corrupt')).length,1,'損壞 cache 必須隔離後強制 miss');
+console.log('DEATH_EVIDENCE DT-012 corrupt_cache_fail_closed');
 fs.rmSync(project,{recursive:true,force:true}); console.log('GATE_ARTIFACT_CACHE_TESTS_OK');

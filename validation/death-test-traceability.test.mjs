@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const checks={
+  cli:{argv:['validation/cli-projectless.test.mjs'],marker:'CLI_PROJECTLESS_TESTS_OK'},
   self_test:{argv:['lib/autodev.mjs','self-test'],marker:'WORKFLOW_EFFICIENCY_SELF_TEST_OK'},
   cache:{argv:['validation/gate-artifact-cache.test.mjs'],marker:'GATE_ARTIFACT_CACHE_TESTS_OK'},
   checkpoint:{argv:['validation/git-checkpoint.test.mjs'],marker:'GIT_CHECKPOINT_TESTS_OK'},
@@ -27,12 +28,12 @@ const checks={
 };
 const ranges=(from,to,workPackage,executables)=>Array.from({length:to-from+1},(_,index)=>({id:`DT-${String(from+index).padStart(3,'0')}`,work_package:workPackage,executables}));
 const cases=[
-  ...ranges(1,4,'WP-11',['self_test']), ...ranges(5,6,'WP-08',['cache']), ...ranges(7,9,'WP-04',['checkpoint','architecture']),
-  ...ranges(10,12,'WP-08/WP-01',['cache','architecture']), ...ranges(13,16,'WP-03',['subprocess']), ...ranges(17,17,'WP-04',['checkpoint']),
-  ...ranges(18,21,'WP-05',['concurrency']), ...ranges(22,24,'WP-06',['durable']), ...ranges(25,27,'WP-07',['quality_contract','quality']),
+  ...ranges(1,4,'WP-11',['cli']), ...ranges(5,6,'WP-08',['cache']), ...ranges(7,9,'WP-04',['checkpoint']),
+  ...ranges(10,12,'WP-08/WP-01',['cache']), ...ranges(13,16,'WP-03',['subprocess']), ...ranges(17,17,'WP-04',['checkpoint']),
+  ...ranges(18,21,'WP-05',['concurrency']), ...ranges(22,24,'WP-06',['durable']), ...ranges(25,27,'WP-07',['quality_contract']),
   ...ranges(28,28,'WP-01',['architecture']), ...ranges(29,30,'WP-10',['parallel']), ...ranges(31,32,'WP-05',['concurrency']),
-  ...ranges(33,33,'WP-06',['durable']), ...ranges(34,34,'WP-07/WP-01',['quality']), ...ranges(35,41,'WP-01/WP-02',['architecture','quality']),
-  ...ranges(42,44,'WP-09',['findings']), ...ranges(45,45,'WP-01',['mutation']), ...ranges(46,46,'WP-05/WP-12',['concurrency','secret']),
+  ...ranges(33,33,'WP-06',['durable']), ...ranges(34,34,'WP-07/WP-01',['quality']), ...ranges(35,41,'WP-01/WP-02',['architecture']),
+  ...ranges(42,44,'WP-09',['findings']), ...ranges(45,45,'WP-01',['mutation']), ...ranges(46,46,'WP-05/WP-12',['concurrency']),
   ...ranges(47,53,'WP-13',['tool_broker_escape']), ...ranges(54,61,'WP-14',['service_isolation']), ...ranges(62,68,'WP-15',['hybrid_controller']), ...ranges(69,76,'WP-16',['isolated_project_flows']), ...ranges(77,82,'WP-17',['fixed_tunnel']), ...ranges(83,89,'WP-18',['controller_credential'])
 ];
 
@@ -48,5 +49,5 @@ for(const name of required){
   assert.ok(output.includes(check.marker),`${name} success marker missing after real execution: ${check.marker}`);
   results.set(name,{status:run.status,marker:check.marker,output});
 }
-for(const item of cases) for(const name of item.executables){const result=results.get(name);assert.equal(result?.status,0,`${item.id} executable evidence failed: ${name}`);if(Number(item.id.slice(3))>=47)assert.ok(result.output.includes(`DEATH_EVIDENCE ${item.id} `),`${item.id} unique executable evidence missing from ${name}`);}
-console.log(JSON.stringify({ok:true,total:cases.length,legacy_suite_mapped:46,individually_evidenced:43,executed_checks:required.length,mode:'mixed_legacy_and_unique_executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id}));
+for(const item of cases) for(const name of item.executables){const result=results.get(name);assert.equal(result?.status,0,`${item.id} executable evidence failed: ${name}`);assert.ok(result.output.includes(`DEATH_EVIDENCE ${item.id} `),`${item.id} unique executable evidence missing from ${name}`);}
+console.log(JSON.stringify({ok:true,total:cases.length,individually_evidenced:cases.length,executed_checks:required.length,mode:'unique_executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id}));

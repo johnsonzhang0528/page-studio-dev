@@ -65,4 +65,5 @@ fs.writeFileSync(path.join(ai,'TASK_GRAPH.json'),JSON.stringify(graph,null,2));
 const failed=runQualityGate(project,'implementation_gate').checks.find(check=>check.name==='開發任務完成度');
 assert.equal(failed?.ok,false);
 assert.match(failed?.detail??'',/TASK-PENDING/);
+console.log('DEATH_EVIDENCE DT-034 incomplete_task_blocks_quality_gate');
 console.log('QUALITY_GATE_TASK_STATUS_SMOKE_OK');

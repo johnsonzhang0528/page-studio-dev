@@ -14,10 +14,13 @@ for(const invalid of [
   {...valid,checks:[{...valid.checks[0],timeout_ms:999}]},
   {...valid,checks:[{...valid.checks[0],required:false}]}
 ]) assert.ok(validateQualityContract(invalid));
+console.log('DEATH_EVIDENCE DT-025 unsafe_quality_commands_denied');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'quality-contract-')); try{
   fs.mkdirSync(path.join(root,'.ai')); fs.writeFileSync(path.join(root,'.ai','QUALITY_CONTRACT.json'),JSON.stringify(valid));
   const loaded=loadQualityContract(root); assert.equal(loaded.ok,true);
   const missing=qualityContractCommands(root,loaded.contract)[0]; assert.deepEqual(missing.args,['test']); assert.match(missing.prerequisite_error,/PACKAGE_MISSING/,'不得向父目錄借用 package.json');
+  console.log('DEATH_EVIDENCE DT-026 missing_local_test_prerequisite_denied');
   fs.writeFileSync(path.join(root,'package.json'),JSON.stringify({scripts:{test:'node --test'}})); assert.equal(qualityContractCommands(root,loaded.contract)[0].prerequisite_error,undefined);
+  console.log('DEATH_EVIDENCE DT-027 explicit_quality_contract_resolved');
 }finally{fs.rmSync(root,{recursive:true,force:true});}
 console.log('QUALITY_CONTRACT_TESTS_OK');

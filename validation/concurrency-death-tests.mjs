@@ -6,7 +6,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { acquireWorkUnitLease, leaseIdentity, terminateChildGroup } from '../lib/concurrency.mjs';
 
 const assert=(condition,message)=>{ if(!condition) throw new Error(message); };
-const pass=name=>console.log(`PASS ${name}`);
+const deathAliases={'CONCURRENCY-DEATH-01':['DT-018','duplicate_controller_lock'],'CONCURRENCY-DEATH-08':['DT-019','duplicate_work_unit_writer'],'CONCURRENCY-DEATH-07':['DT-020','stale_owner_recovery'],'CONCURRENCY-DEATH-11':['DT-021','corrupt_lease_fail_closed'],'CONCURRENCY-DEATH-06':['DT-031','child_process_group_termination'],'CONCURRENCY-DEATH-09':['DT-032','stable_project_lock_scope'],'CONCURRENCY-DEATH-10':['DT-046','independent_project_isolation']};
+const pass=name=>{console.log(`PASS ${name}`);const alias=deathAliases[name];if(alias)console.log(`DEATH_EVIDENCE ${alias[0]} ${alias[1]}`);};
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'page-autodev-concurrency-'));
 fs.mkdirSync(path.join(temp,'.ai'),{recursive:true});
 try {

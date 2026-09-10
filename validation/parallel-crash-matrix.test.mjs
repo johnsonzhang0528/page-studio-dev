@@ -25,4 +25,6 @@ for(const stage of stages){
     assert.equal(worktrees.length,1,`${stage} 不得留下 orphan worktree`);
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
 }
+console.log('DEATH_EVIDENCE DT-029 parallel_integration_crash_converges');
+console.log('DEATH_EVIDENCE DT-030 parallel_cleanup_no_orphans');
 console.log(JSON.stringify({ok:true,stages,cases:stages.length},null,2));
