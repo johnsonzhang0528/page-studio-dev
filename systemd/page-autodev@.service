@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=%h/page-studio-dev/projects/%i
 ExecStart=%h/page-studio-dev/bin/page-autodev run %i
+LoadCredential=billing_reservation_credential:/etc/page-autodev/credentials/billing-reservation-credential
 SuccessExitStatus=75
 Nice=10
 KillMode=control-group

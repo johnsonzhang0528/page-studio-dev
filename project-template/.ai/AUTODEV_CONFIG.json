@@ -55,7 +55,17 @@
     "allowed_routes": ["targeted_low_risk_read_only_gate"],
     "require_billing_gateway": true,
     "require_spend_lease": true,
-    "allow_isolated_write": false
+    "allow_isolated_write": false,
+    "billing_gateway_socket": "/run/page-autodev/billing-gateway.sock",
+    "limits": {
+      "max_input_tokens": 8000,
+      "max_output_tokens": 1600,
+      "max_reasoning_tokens": 2000,
+      "max_cost_microusd": 250000,
+      "max_context_file_bytes": 65536,
+      "max_context_bytes": 262144,
+      "invocation_deadline_ms": 120000
+    }
   },
   "complexity_control": {
     "enabled": true,
