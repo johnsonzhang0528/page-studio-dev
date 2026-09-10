@@ -12,6 +12,7 @@
     "test:property": "node validation/state-transition-property.test.mjs",
     "test:mutation": "node validation/workflow-optimization-mutation.test.mjs",
     "test:secret": "node validation/secret-scan.mjs",
-    "validate:billing-config": "node bin/page-autodev-validate-billing-config.mjs"
+    "validate:billing-config": "node bin/page-autodev-validate-billing-config.mjs",
+    "finalize:release-evidence": "node bin/page-autodev-finalize-release-evidence.mjs"
   }
 }

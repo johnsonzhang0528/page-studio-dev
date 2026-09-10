@@ -14,8 +14,12 @@ const durationMs=Number(process.env.SHADOW_SOAK_DURATION_MS??24*60*60*1000);
 const intervalMs=Number(process.env.SHADOW_SOAK_INTERVAL_MS??5*60*1000);
 const outputPath=process.env.SHADOW_SOAK_OUTPUT??'/tmp/page-autodev-shadow-soak.jsonl';
 const resilienceScenarios=(process.env.SHADOW_SOAK_SCENARIOS??'quota,state,durable,parallel,controller,hybrid,isolation,migration').split(',').map(value=>value.trim()).filter(Boolean);
+const git=args=>{const result=spawnSync('git',['-C',controllerRoot,...args],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);return result.stdout.trim();};
+const candidate={branch:git(['branch','--show-current']),head:git(['rev-parse','HEAD'])},expectedBranch=process.env.SHADOW_SOAK_EXPECTED_BRANCH??'',expectedHead=process.env.SHADOW_SOAK_EXPECTED_HEAD??'';
 assert.ok(Number.isFinite(durationMs)&&durationMs>=0,'SHADOW_SOAK_DURATION_MS 必須是非負數');
 assert.ok(Number.isFinite(intervalMs)&&intervalMs>0,'SHADOW_SOAK_INTERVAL_MS 必須是正數');
+assert.ok(expectedBranch&&candidate.branch===expectedBranch,'SHADOW_SOAK_EXPECTED_BRANCH 必須明確匹配目前分支');
+assert.ok(/^[a-f0-9]{40}$/.test(expectedHead)&&candidate.head===expectedHead,'SHADOW_SOAK_EXPECTED_HEAD 必須明確匹配目前 commit');
 
 function filesUnder(root){
   const found=[];
@@ -79,7 +83,7 @@ function evaluate(project){
 }
 
 const startedAt=Date.now(); let samples=0;
-append({event:'start',started_at:new Date(startedAt).toISOString(),duration_ms:durationMs,interval_ms:intervalMs,projects,mode:'mixed_resilience_disposable_snapshot',resilience_scenarios:resilienceScenarios});
+append({event:'start',started_at:new Date(startedAt).toISOString(),candidate,duration_ms:durationMs,interval_ms:intervalMs,projects,mode:'mixed_resilience_disposable_snapshot',resilience_scenarios:resilienceScenarios});
 try {
   while(true){
     const decisions=Object.fromEntries(projects.map(project=>[project,evaluate(project)]));
@@ -88,9 +92,9 @@ try {
     const remaining=durationMs-(Date.now()-startedAt); if(remaining<=0) break;
     await new Promise(resolve=>setTimeout(resolve,Math.min(intervalMs,remaining)));
   }
-  append({event:'complete',completed_at:new Date().toISOString(),samples,elapsed_ms:Date.now()-startedAt,ok:true});
+  append({event:'complete',completed_at:new Date().toISOString(),candidate,samples,elapsed_ms:Date.now()-startedAt,ok:true});
   console.log(JSON.stringify({ok:true,samples,elapsed_ms:Date.now()-startedAt,output:outputPath},null,2));
 } catch(error) {
-  append({event:'failed',failed_at:new Date().toISOString(),samples,elapsed_ms:Date.now()-startedAt,ok:false,error:error.message});
+  append({event:'failed',failed_at:new Date().toISOString(),candidate,samples,elapsed_ms:Date.now()-startedAt,ok:false,error:error.message});
   console.error(error.stack??error.message); process.exitCode=1;
 }

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -57,4 +59,7 @@ for(const item of cases) for(const name of item.executables){
   evidence.push({id:item.id,work_package:item.work_package,executable:name,scenario:matches[0][1]});
 }
 assert.equal(new Set(evidence.map(item=>item.id)).size,cases.length,'death evidence IDs must be unique');
-console.log(JSON.stringify({ok:true,total:cases.length,individually_evidenced:evidence.length,executed_checks:required.length,mode:'unique_named_executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id,evidence}));
+const git=args=>{const result=spawnSync('git',['-C',root,...args],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);return result.stdout.trim();};
+const receipt={schema_version:1,kind:'death_test_evidence_manifest',ok:true,candidate:{branch:git(['branch','--show-current']),head:git(['rev-parse','HEAD'])},total:cases.length,individually_evidenced:evidence.length,executed_checks:required.length,mode:'unique_named_executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id,evidence};receipt.sha256=crypto.createHash('sha256').update(JSON.stringify(receipt)).digest('hex');
+if(process.env.DEATH_EVIDENCE_OUTPUT)fs.writeFileSync(process.env.DEATH_EVIDENCE_OUTPUT,`${JSON.stringify(receipt,null,2)}\n`,{mode:0o600});
+console.log(JSON.stringify(receipt));
