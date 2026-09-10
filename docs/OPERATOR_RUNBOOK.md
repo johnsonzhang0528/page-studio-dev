@@ -36,6 +36,14 @@ For controller code, switch back to the previous reviewed controller commit and 
 - secret-scan result and systemd security snapshot
 - three end-to-end canary receipts
 
+## Candidate-bound soak and final evidence
+
+The soak receipt is an append-only SHA-256 chain. Every record must contain a monotonic `chain_sequence`, the preceding record hash, and its own hash. The runner must fsync each record and the containing directory. Never repair, truncate, reorder, concatenate, or hand-edit a soak receipt.
+
+Start the candidate with explicit `SHADOW_SOAK_EXPECTED_BRANCH` and `SHADOW_SOAK_EXPECTED_HEAD`. Use the approved two-project set (`test-project`, `seo-empire`), all eight resilience scenarios, a five-minute interval, a 24-hour active runtime, and a restart policy that resumes only after an abnormal process exit. Planned stops must append `interrupted`; offline time is not counted toward the 24 hours. A torn tail, changed candidate/configuration, terminal `failed`, excessive resource growth, missing scenario, missing project decision, or broken chain requires a new candidate review and must never be repaired in place.
+
+Before the soak, retain candidate-bound receipts for the 89 named death cases, the release preflight, the three offline canary cases, every controlled Project migration inventory, and the systemd security artifact. Finalization consumes all five evidence sources plus the completed soak chain. Its only successful decision is `ELIGIBLE_FOR_OPERATOR_REVIEW` with `deploy_authorized=false`; it never deploys or grants deployment approval.
+
 ## Billing Gateway activation (non-production canary only)
 
 1. Keep `allow_deploy=false` and the egress policy `activation=disabled` while preparing credentials.

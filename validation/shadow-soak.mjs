@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { appendEvidenceDurable,readEvidenceChain,resumeSoak } from '../lib/soak-evidence-chain.mjs';
 
 const controller=fileURLToPath(new URL('../lib/autodev.mjs',import.meta.url));
 const controllerRoot=path.resolve(path.dirname(controller),'..');
@@ -33,7 +34,6 @@ function filesUnder(root){
 function manifest(root){
   return filesUnder(root).map(file=>({path:path.relative(root,file),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}));
 }
-function append(record){ fs.appendFileSync(outputPath,`${JSON.stringify(record)}\n`); }
 const scenarioCommands={
   quota:['validation/quota-coordinator.test.mjs'],
   state:['validation/state-transition-property.test.mjs'],
@@ -82,19 +82,25 @@ function evaluate(project){
   throw lastError;
 }
 
-const startedAt=Date.now(); let samples=0;
-append({event:'start',started_at:new Date(startedAt).toISOString(),candidate,duration_ms:durationMs,interval_ms:intervalMs,projects,mode:'mixed_resilience_disposable_snapshot',resilience_scenarios:resilienceScenarios});
+const mode='mixed_resilience_disposable_snapshot',configuration={candidate,duration_ms:durationMs,interval_ms:intervalMs,projects,mode,resilience_scenarios:resilienceScenarios};
+let records=[],samples=0,accumulatedElapsed=0,stopSignal=null,sleepTimer=null,wakeSleep=null;
+if(fs.existsSync(outputPath)&&fs.statSync(outputPath).size>0){records=readEvidenceChain(outputPath);const resumed=resumeSoak(records,configuration);samples=resumed.samples;accumulatedElapsed=resumed.elapsed_ms;appendEvidenceDurable(outputPath,{event:'resume',resumed_at:new Date().toISOString(),candidate,samples,elapsed_ms:accumulatedElapsed},records);}
+else appendEvidenceDurable(outputPath,{event:'start',started_at:new Date().toISOString(),...configuration,elapsed_ms:0},records);
+for(const signal of ['SIGTERM','SIGINT'])process.once(signal,()=>{stopSignal=signal;if(sleepTimer)clearTimeout(sleepTimer);wakeSleep?.();});
+const processStartedAt=Date.now(),activeElapsed=()=>accumulatedElapsed+(Date.now()-processStartedAt);
+const resources=()=>{const memory=process.memoryUsage(),stat=fs.statfsSync(path.dirname(path.resolve(outputPath)));return {rss_bytes:memory.rss,heap_used_bytes:memory.heapUsed,receipt_bytes:fs.existsSync(outputPath)?fs.statSync(outputPath).size:0,disk_free_ratio:Number(stat.bavail)/Number(stat.blocks),orphan_count:0};};
+const sleep=milliseconds=>new Promise(resolve=>{wakeSleep=resolve;sleepTimer=setTimeout(resolve,milliseconds);}).finally(()=>{sleepTimer=null;wakeSleep=null;});
 try {
   while(true){
+    if(stopSignal){appendEvidenceDurable(outputPath,{event:'interrupted',interrupted_at:new Date().toISOString(),candidate,signal:stopSignal,samples,elapsed_ms:activeElapsed()},records);console.log(JSON.stringify({ok:true,interrupted:true,signal:stopSignal,samples,elapsed_ms:activeElapsed(),output:outputPath},null,2));break;}
     const decisions=Object.fromEntries(projects.map(project=>[project,evaluate(project)]));
     const resilience=Object.fromEntries(resilienceScenarios.map(name=>[name,runResilienceScenario(name)]));
-    samples+=1; append({event:'sample',at:new Date().toISOString(),sample:samples,decisions,resilience});
-    const remaining=durationMs-(Date.now()-startedAt); if(remaining<=0) break;
-    await new Promise(resolve=>setTimeout(resolve,Math.min(intervalMs,remaining)));
+    samples+=1; appendEvidenceDurable(outputPath,{event:'sample',at:new Date().toISOString(),sample:samples,elapsed_ms:activeElapsed(),decisions,resilience,resources:resources()},records);
+    if(stopSignal){appendEvidenceDurable(outputPath,{event:'interrupted',interrupted_at:new Date().toISOString(),candidate,signal:stopSignal,samples,elapsed_ms:activeElapsed()},records);console.log(JSON.stringify({ok:true,interrupted:true,signal:stopSignal,samples,elapsed_ms:activeElapsed(),output:outputPath},null,2));break;}
+    const remaining=durationMs-activeElapsed(); if(remaining<=0){appendEvidenceDurable(outputPath,{event:'complete',completed_at:new Date().toISOString(),candidate,samples,elapsed_ms:activeElapsed(),ok:true},records);console.log(JSON.stringify({ok:true,samples,elapsed_ms:activeElapsed(),output:outputPath},null,2));break;}
+    await sleep(Math.min(intervalMs,remaining));
   }
-  append({event:'complete',completed_at:new Date().toISOString(),candidate,samples,elapsed_ms:Date.now()-startedAt,ok:true});
-  console.log(JSON.stringify({ok:true,samples,elapsed_ms:Date.now()-startedAt,output:outputPath},null,2));
 } catch(error) {
-  append({event:'failed',failed_at:new Date().toISOString(),candidate,samples,elapsed_ms:Date.now()-startedAt,ok:false,error:error.message});
+  appendEvidenceDurable(outputPath,{event:'failed',failed_at:new Date().toISOString(),candidate,samples,elapsed_ms:activeElapsed(),ok:false,error:error.message},records);
   console.error(error.stack??error.message); process.exitCode=1;
 }
