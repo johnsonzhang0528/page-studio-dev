@@ -46,7 +46,7 @@ for(const name of required){
   assert.equal(run.error,undefined,`${name} could not execute: ${run.error?.message??''}`);
   assert.equal(run.status,0,`${name} failed with ${run.status}: ${output.slice(-4000)}`);
   assert.ok(output.includes(check.marker),`${name} success marker missing after real execution: ${check.marker}`);
-  results.set(name,{status:run.status,marker:check.marker});
+  results.set(name,{status:run.status,marker:check.marker,output});
 }
-for(const item of cases) for(const name of item.executables) assert.equal(results.get(name)?.status,0,`${item.id} executable evidence failed: ${name}`);
-console.log(JSON.stringify({ok:true,total:cases.length,passed:cases.length,executed_checks:required.length,mode:'executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id}));
+for(const item of cases) for(const name of item.executables){const result=results.get(name);assert.equal(result?.status,0,`${item.id} executable evidence failed: ${name}`);if(Number(item.id.slice(3))>=47)assert.ok(result.output.includes(`DEATH_EVIDENCE ${item.id} `),`${item.id} unique executable evidence missing from ${name}`);}
+console.log(JSON.stringify({ok:true,total:cases.length,legacy_suite_mapped:46,individually_evidenced:43,executed_checks:required.length,mode:'mixed_legacy_and_unique_executable_fault_evidence',first:cases[0].id,last:cases.at(-1).id}));
