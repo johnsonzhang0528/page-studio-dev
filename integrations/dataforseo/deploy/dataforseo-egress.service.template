@@ -1,0 +1,33 @@
+[Unit]
+Description=Page AutoDev DataForSEO egress broker (disabled policy)
+Requires=dataforseo-egress.socket
+Requires=dataforseo-tunnel.socket
+After=dataforseo-egress.socket dataforseo-tunnel.socket
+
+[Service]
+Type=simple
+User=page-autodev-dataforseo-egress
+Group=page-autodev-dataforseo-egress
+WorkingDirectory=/opt/page-autodev
+ExecStart=/usr/bin/node /opt/page-autodev/bin/page-autodev-dataforseo-egress-daemon.mjs
+LoadCredential=egress_policy:/etc/page-autodev/credentials/dataforseo-egress-policy.json
+LoadCredential=gateway_assertion_secret:/etc/page-autodev/credentials/gateway-assertion-secret
+LoadCredential=dataforseo_login:/etc/page-autodev/credentials/dataforseo-login
+LoadCredential=dataforseo_password:/etc/page-autodev/credentials/dataforseo-password
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+CapabilityBoundingSet=
+PrivateDevices=true
+PrivateNetwork=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+MemoryDenyWriteExecute=true
+IPAddressDeny=any
+UMask=0077
+
+[Install]
+# Intentionally no WantedBy before reviewed canary activation.

@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "market": {"location_code": 2158, "language_code": "zh-TW"},
+  "instructions": "Replace rows with exactly 60 unique real queries. Null values must remain null and must not be converted to zero.",
+  "rows": []
+}

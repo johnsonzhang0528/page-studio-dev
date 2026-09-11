@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "target": "integration-worktree",
+  "apply": true,
+  "reason": "Integrated after refactor and soak evidence; activation remains disabled pending paid canary approval",
+  "required_surfaces": ["billing-gateway-runtime", "billing-egress-assertion", "billing-firewall", "rollout-control", "provider-context-bundle"],
+  "new_surfaces": ["data-source-contract", "dataforseo-adapter", "dataforseo-egress", "dataforseo-fixed-tunnel", "dataforseo-unix-ipc"],
+  "activation_default": "disabled"
+}

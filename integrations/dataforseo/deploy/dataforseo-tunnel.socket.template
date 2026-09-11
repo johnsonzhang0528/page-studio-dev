@@ -1,0 +1,13 @@
+[Unit]
+Description=Page AutoDev fixed DataForSEO tunnel socket
+[Socket]
+ListenStream=/run/page-autodev/dataforseo-tunnel.sock
+FileDescriptorName=dataforseo-tunnel
+SocketUser=page-autodev-dataforseo-egress
+SocketGroup=page-autodev-dataforseo-egress
+SocketMode=0600
+DirectoryMode=0750
+RemoveOnStop=true
+Accept=no
+[Install]
+# No WantedBy before canary approval.

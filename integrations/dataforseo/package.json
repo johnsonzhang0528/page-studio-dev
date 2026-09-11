@@ -1,0 +1,10 @@
+{
+  "name": "page-autodev-dataforseo-integration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test validation/*.test.mjs && npm run test:secret",
+    "test:secret": "node bin/page-autodev-dataforseo-credential-scan.mjs"
+  }
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=Page AutoDev credential-free fixed DataForSEO tunnel
+Requires=dataforseo-tunnel.socket
+After=dataforseo-tunnel.socket network-online.target
+[Service]
+Type=simple
+User=page-autodev-dataforseo-egress
+Group=page-autodev-dataforseo-egress
+ExecStart=/usr/bin/node /opt/page-autodev/bin/page-autodev-dataforseo-tunnel-daemon.mjs
+NoNewPrivileges=true
+CapabilityBoundingSet=
+PrivateDevices=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+MemoryDenyWriteExecute=true
+UMask=0077
+[Install]
+# No WantedBy before canary approval.

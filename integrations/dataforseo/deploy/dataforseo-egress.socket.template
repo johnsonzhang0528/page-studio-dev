@@ -1,0 +1,15 @@
+[Unit]
+Description=Page AutoDev DataForSEO egress broker socket (disabled template)
+
+[Socket]
+ListenStream=/run/page-autodev/dataforseo-egress.sock
+FileDescriptorName=dataforseo-egress
+SocketUser=page-autodev-dataforseo-egress
+SocketGroup=page-autodev-egress
+SocketMode=0660
+DirectoryMode=0750
+RemoveOnStop=true
+Accept=no
+
+[Install]
+# Deliberately no WantedBy before reviewed canary activation.
