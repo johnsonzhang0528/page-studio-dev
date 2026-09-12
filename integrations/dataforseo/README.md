@@ -1,6 +1,6 @@
-# DataForSEO Pre-integration
+# DataForSEO Integration
 
-這是與現行 page-studio-dev runtime 隔離的預整合工作包。
+這是整合於 page-studio-dev、預設停用且具有獨立部署邊界的 DataForSEO 工作包。
 
 目前只包含：
 
@@ -31,8 +31,8 @@
 
 - 真實Credential讀取
 - 對外網路傳輸
-- controller/router接線
-- systemd安裝或啟用
+- 正式 controller/router 付費派發接線
+- systemd 啟用
 - DataForSEO正式API呼叫
 - 專案start/resume
 
@@ -59,4 +59,4 @@ npm test
 
 `DurableSpendLedger` 是供最終 Billing Gateway 採用的隔離核心。帳本路徑必須由部署層提供絕對路徑；模組不預設正式環境位置。鎖逾時、帳本格式錯誤或校驗碼不符時一律停止，不會清除帳本、自動偷鎖或重送付費請求。
 
-目前仍未完成正式整合所需的部署身分、Linux 權限、備份／復原程序與跨主機共享儲存決策，因此不得直接啟用於正式執行流程。
+停用安裝器會建立專用部署身分、Linux 權限、可回復備份與 systemd 單元，但不會啟用或啟動服務。跨主機共享帳本與付費 canary 尚未驗收，因此不得直接啟用於正式執行流程。
