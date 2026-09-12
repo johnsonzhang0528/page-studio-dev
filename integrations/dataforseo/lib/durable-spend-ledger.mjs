@@ -98,7 +98,7 @@ export class DurableSpendLedger {
   }
 
   async reconcileNoDispatch(leaseId, {reason, evidence_sha256} = {}) {
-    if (reason !== 'SERVICE_CRASHED_BEFORE_LISTENER' || !/^[a-f0-9]{64}$/.test(evidence_sha256 ?? '')) throw new Error('RECONCILIATION_EVIDENCE_REQUIRED');
+    if (!['SERVICE_CRASHED_BEFORE_LISTENER','DNS_FAILED_BEFORE_CONNECT'].includes(reason) || !/^[a-f0-9]{64}$/.test(evidence_sha256 ?? '')) throw new Error('RECONCILIATION_EVIDENCE_REQUIRED');
     return this.#mutate(records => {
       const record = this.#find(records, leaseId);
       if (record.status !== 'UNKNOWN_HOLD') throw new Error(`INVALID_TRANSITION:${record.status}->REJECTED`);
