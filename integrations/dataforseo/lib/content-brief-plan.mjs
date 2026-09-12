@@ -1,0 +1,13 @@
+const plans={
+  '網頁設計':{audience:'第一次規劃網站的決策者',question:'網頁設計包含什麼、如何規劃與驗收',sections:['需求與目標','網站類型與必要頁面','設計與開發流程','成本構成因素','驗收清單','常見失敗原因'],boundaries:['不宣稱固定報價','不推薦未實際評估的公司']},
+  'seo優化':{audience:'需要改善自然搜尋表現的網站經營者',question:'SEO 優化應依什麼順序執行',sections:['現況基線','技術可存取性','搜尋意圖與內容','內部連結','外部權威','量測與迭代'],boundaries:['不保證排名或流量','不使用無法驗證的成功案例']},
+  'seo文章':{audience:'需要製作搜尋導向內容的編輯與站長',question:'如何規劃、撰寫及驗收 SEO 文章',sections:['搜尋意圖','主題與內容邊界','資料與證據','文章結構','On-page 檢查','發布後量測'],boundaries:['不以字數作為品質保證','不大量堆疊關鍵字']},
+  'seo 教學':{audience:'SEO 初學者',question:'如何由零建立可驗證的 SEO 工作流程',sections:['目標與基線','關鍵字研究','網站架構','內容製作','技術檢查','GSC 回饋循環'],boundaries:['不承諾速成結果','不把工具分數當作最終決策']},
+  '架設網站自學':{audience:'準備自行建立第一個網站的初學者',question:'自學架站需要哪些能力、步驟與選擇',sections:['需求與範圍','網域與主機','建站方式比較','基本頁面與導覽','安全與備份','上線驗收'],boundaries:['不假設單一技術適合所有人','不提供未驗證的安全保證']}
+};
+
+export function buildContentBriefPlan(review){
+  if(review?.mode!=='proposal_only'||review.publication_authorized!==false||!Array.isArray(review.briefs))throw new Error('VERIFIED_CONTENT_REVIEW_REQUIRED');
+  const briefs=review.briefs.map(source=>{const plan=plans[source.primary_query];if(!plan)throw new Error(`UNREVIEWED_BRIEF:${source.primary_query}`);return {...source,audience:plan.audience,primary_question:plan.question,required_sections:plan.sections,content_boundaries:plan.boundaries,evidence_register:[{claim_type:'definition_or_process',minimum_sources:1,source_quality:'primary_or_authoritative',freshness:'review_at_draft_time'},{claim_type:'price_statistic_or_tool_limit',minimum_sources:1,source_quality:'official_current_source',freshness:'dated_and_rechecked_before_publish'},{claim_type:'recommendation_comparison_or_result',minimum_sources:2,source_quality:'reproducible_method_and_disclosure',freshness:'current_at_publish'}],internal_link_requirements:['連回對應主題中心頁','至少連到一個相鄰教學頁','避免孤兒頁與精確錨文字堆疊'],prepublish_gates:['搜尋意圖人工確認','與既有 URL 重疊檢查','每項可變動事實有來源與日期','標題與內容一致','canonical/indexability/internal links 檢查','無虛構經驗、結果或推薦','負責人核准'],pilot_acceptance:{indexing:'發布後 28 天內可索引；未索引先診斷，不複製頁面',measurement_window_days:56,minimum_signals:['GSC impressions > 0','查詢與頁面主題相關','無手動處置或嚴重技術錯誤'],decision_rules:{EXPAND:'出現多個相關查詢且意圖一致',UPDATE:'有曝光但摘要、內容或意圖明顯不匹配',BUILD_AUTHORITY:'內容匹配但排名長期受權威差距限制',RETIRE:'兩輪修正後仍無相關訊號，且需求或商業價值不成立'}},publication_status:'NOT_AUTHORIZED'};});
+  return {schema_version:1,mode:'proposal_only',writes_to_business_state:false,publication_authorized:false,decision:'READY_FOR_HUMAN_EVIDENCE_COLLECTION',brief_count:briefs.length,global_stop_conditions:['來源不足或互相矛盾','需要虛構第一手經驗才能成立','與既有頁面搜尋意圖重疊','頁面無明確受眾或下一步','技術發布 Gate 未通過'],briefs};
+}
