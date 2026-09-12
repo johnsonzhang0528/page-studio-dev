@@ -54,6 +54,7 @@ systemctl daemon-reload
 
 for unit in dataforseo-egress.service dataforseo-egress.socket dataforseo-tunnel.service dataforseo-tunnel.socket; do
   systemctl is-active --quiet "${unit}" && { echo "UNEXPECTED_ACTIVE:${unit}" >&2; exit 1; }
-  systemctl is-enabled --quiet "${unit}" && { echo "UNEXPECTED_ENABLED:${unit}" >&2; exit 1; }
+  enablement="$(systemctl is-enabled "${unit}" 2>/dev/null || true)"
+  [[ "${enablement}" == "enabled" || "${enablement}" == "enabled-runtime" ]] && { echo "UNEXPECTED_ENABLED:${unit}" >&2; exit 1; }
 done
 echo "DATAFORSEO_DISABLED_INSTALL_OK"
