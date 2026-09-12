@@ -62,3 +62,4 @@ test('identity fields cannot inject alternate ledger keys', async t => {
   await assert.rejects(() => ledger.reserve({...request('a'), project_id: 'bad|project'}), /INVALID_PROJECT_ID/);
   await assert.rejects(() => ledger.reserve({...request('a'), day: '../escape'}), /INVALID_DAY/);
 });
+test('unknown hold requires machine evidence before no-dispatch reconciliation',async t=>{const {ledger}=await sandbox(t),lease=await ledger.reserve(request('f'));await ledger.markDispatched(lease.lease_id,'provider-1');await ledger.markUnknown(lease.lease_id);await assert.rejects(()=>ledger.reconcileNoDispatch(lease.lease_id,{reason:'guess',evidence_sha256:'a'.repeat(64)}),/EVIDENCE/);const reconciled=await ledger.reconcileNoDispatch(lease.lease_id,{reason:'SERVICE_CRASHED_BEFORE_LISTENER',evidence_sha256:'a'.repeat(64)});assert.equal(reconciled.status,'REJECTED');});
