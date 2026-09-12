@@ -1,6 +1,6 @@
 const required = ['query','location_code','language_code','volume','kd','intent','observed_at'];
 
-export function validateCalibrationDataset(rows, {required_count = 60} = {}) {
+export function validateCalibrationDataset(rows, {required_count = 60,minimum_volume_coverage=0.8,minimum_kd_coverage=0.8} = {}) {
   const errors = [];
   if (!Array.isArray(rows)) return {ok: false, errors: ['DATASET_NOT_ARRAY']};
   if (rows.length !== required_count) errors.push(`ROW_COUNT_EXPECTED:${required_count}`);
@@ -19,7 +19,7 @@ export function validateCalibrationDataset(rows, {required_count = 60} = {}) {
   });
   const nullVolumeRatio = rows.length ? rows.filter(row => row?.volume === null).length / rows.length : 1;
   const nullKdRatio = rows.length ? rows.filter(row => row?.kd === null).length / rows.length : 1;
-  if (nullVolumeRatio > 0.2) errors.push('VOLUME_COVERAGE_BELOW_80_PERCENT');
-  if (nullKdRatio > 0.2) errors.push('KD_COVERAGE_BELOW_80_PERCENT');
+  if (1-nullVolumeRatio < minimum_volume_coverage) errors.push('VOLUME_COVERAGE_BELOW_80_PERCENT');
+  if (1-nullKdRatio < minimum_kd_coverage) errors.push('KD_COVERAGE_BELOW_80_PERCENT');
   return {ok: errors.length === 0, errors, metrics: {rows: rows.length, unique_queries: queries.size, volume_coverage: 1 - nullVolumeRatio, kd_coverage: 1 - nullKdRatio}};
 }
