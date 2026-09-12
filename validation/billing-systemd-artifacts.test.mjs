@@ -22,13 +22,15 @@ for(const socket of [gatewaySocket,egressSocket]){
 }
 assert.match(tunnelSocket,/^Accept=no$/m);assert.match(tunnelSocket,/^RemoveOnStop=true$/m);
 for(const service of [gatewayService,egressService]){
-  for(const rule of ['NoNewPrivileges=true','CapabilityBoundingSet=','RemoveIPC=true','PrivateDevices=true','PrivateNetwork=true','PrivateTmp=true','ProtectHome=true','ProtectProc=invisible','ProcSubset=pid','ProtectSystem=strict','RestrictNamespaces=true','RestrictSUIDSGID=true','LockPersonality=true','MemoryDenyWriteExecute=true','IPAddressDeny=any']) assert.match(service,new RegExp(`^${rule}$`,'m'));
+  for(const rule of ['NoNewPrivileges=true','CapabilityBoundingSet=','RemoveIPC=true','PrivateDevices=true','PrivateNetwork=true','PrivateTmp=true','ProtectHome=true','ProtectProc=invisible','ProcSubset=pid','ProtectSystem=strict','RestrictNamespaces=true','RestrictSUIDSGID=true','LockPersonality=true','IPAddressDeny=any']) assert.match(service,new RegExp(`^${rule}$`,'m'));
   assert.match(service,/^RestrictAddressFamilies=AF_UNIX$/m);
   assert.doesNotMatch(service,/DynamicUser=true|User=root|Group=root/);
+  assert.doesNotMatch(service,/^MemoryDenyWriteExecute=/m,'HTTP brokers require Node WebAssembly support');
 }
-for(const service of [gatewayService,egressService,tunnelService]){
-  assert.match(service,/^ExecStart=\/usr\/bin\/node --jitless \/opt\/page-autodev\/bin\/page-autodev-[a-z-]+-daemon\.mjs$/m,'Node daemon must remain compatible with MemoryDenyWriteExecute');
+for(const service of [gatewayService,egressService]){
+  assert.match(service,/^ExecStart=\/usr\/bin\/node \/opt\/page-autodev\/bin\/page-autodev-[a-z-]+-daemon\.mjs$/m,'HTTP brokers require Node WebAssembly support');
 }
+assert.match(tunnelService,/^ExecStart=\/usr\/bin\/node --jitless \/opt\/page-autodev\/bin\/page-autodev-openai-tunnel-daemon\.mjs$/m,'credential-free tunnel must remain compatible with MemoryDenyWriteExecute');
 for(const rule of ['NoNewPrivileges=true','CapabilityBoundingSet=','PrivateDevices=true','PrivateTmp=true','ProtectHome=true','ProtectProc=invisible','ProcSubset=pid','ProtectSystem=strict','RestrictNamespaces=true','MemoryDenyWriteExecute=true'])assert.match(tunnelService,new RegExp(`^${rule}$`,'m'));
 assert.match(tunnelService,/^RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6$/m);assert.doesNotMatch(tunnelService,/LoadCredential=|EnvironmentFile=|OPENAI_API_KEY|ANTHROPIC|PrivateNetwork=true/);
 assert.match(tunnelDaemon,/createFixedTunnelServer/);assert.doesNotMatch(tunnelDaemon,/openai_api_key|authorization|Bearer|CREDENTIALS_DIRECTORY/i);
