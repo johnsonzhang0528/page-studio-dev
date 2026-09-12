@@ -1,4 +1,4 @@
-const HOST='api.dataforseo.com',PATH='/v3/dataforseo_labs/google/keyword_overview/live';
+const HOST='api.dataforseo.com',PATHS=new Set(['/v3/dataforseo_labs/google/keyword_overview/live','/v3/dataforseo_labs/google/keyword_ideas/live']);
 const fail=(message,code='DATAFORSEO_TLS_DENIED')=>Object.assign(new Error(message),{code});
 
 function decodeChunked(body){
@@ -37,7 +37,7 @@ function dispatchOverFixedTls({createConnection,input,auth,maxResponseBytes,time
       socket.once('error',event=>finish(fail(`REQUEST:${event.code??'ERROR'}`)));
       socket.on('data',chunk=>{size+=chunk.length;if(size>maxResponseBytes+65536)return finish(fail('RESPONSE_TOO_LARGE'));chunks.push(chunk);});
       socket.once('end',()=>{try{finish(null,parseRawHttp(Buffer.concat(chunks),maxResponseBytes));}catch(error){finish(error);}});
-      const head=[`POST ${PATH} HTTP/1.1`,`Host: ${HOST}`,`Authorization: Basic ${auth}`,'Content-Type: application/json',`Content-Length: ${input.body.length}`,'Connection: close','',''].join('\r\n');
+      const head=[`POST ${input.path} HTTP/1.1`,`Host: ${HOST}`,`Authorization: Basic ${auth}`,'Content-Type: application/json',`Content-Length: ${input.body.length}`,'Connection: close','',''].join('\r\n');
       socket.write(Buffer.concat([Buffer.from(head,'latin1'),input.body]));
     });}catch(error){finish(fail(`CONNECT:${error.code??'ERROR'}`));}
   });
@@ -47,8 +47,8 @@ export function createDataForSeoTlsTransport({login,password,request,create_conn
   if(!login||!password||(!request&&!create_connection))throw fail('CONFIG','DATAFORSEO_TLS_CONFIG_INVALID');
   const auth=Buffer.from(`${login}:${password}`).toString('base64');
   return input=>{
-    if(input.hostname!==HOST||input.servername!==HOST||input.port!==443||input.minimum_tls!=='TLSv1.2'||input.method!=='POST'||input.path!==PATH||input.redirects!==0||input.retries!==0||!Buffer.isBuffer(input.body))return Promise.reject(fail('SCOPE'));
+    if(input.hostname!==HOST||input.servername!==HOST||input.port!==443||input.minimum_tls!=='TLSv1.2'||input.method!=='POST'||!PATHS.has(input.path)||input.redirects!==0||input.retries!==0||!Buffer.isBuffer(input.body))return Promise.reject(fail('SCOPE'));
     if(!request)return dispatchOverFixedTls({createConnection:create_connection,input,auth,maxResponseBytes:max_response_bytes,timeoutMs:timeout_ms});
-    return new Promise((resolve,reject)=>{let done=false,size=0,handle,timer;const chunks=[],agent={createConnection:create_connection,destroy(){}};const finish=(error,value)=>{if(done)return;done=true;clearTimeout(timer);agent.destroy();error?reject(error):resolve(value);};try{handle=request({protocol:'http:',hostname:HOST,port:443,method:'POST',path:PATH,agent,setHost:true,headers:{host:HOST,authorization:`Basic ${auth}`,'content-type':'application/json','content-length':input.body.length}},response=>{response.on('data',chunk=>{size+=chunk.length;if(size>max_response_bytes){handle.destroy();finish(fail('RESPONSE_TOO_LARGE'));}else chunks.push(chunk);});response.on('error',event=>finish(fail(`RESPONSE:${event.code??'ERROR'}`)));response.on('end',()=>finish(null,{status:Number(response.statusCode),body:Buffer.concat(chunks),attempts:1}));});}catch(error){finish(fail(`REQUEST:${error.code??'ERROR'}`));return;}handle.once('error',event=>finish(fail(`REQUEST:${event.code??'ERROR'}`)));timer=setTimeout(()=>{handle.destroy();finish(fail('TIMEOUT','DATAFORSEO_TLS_TIMEOUT'));},timeout_ms);handle.end(input.body);});
+    return new Promise((resolve,reject)=>{let done=false,size=0,handle,timer;const chunks=[],agent={createConnection:create_connection,destroy(){}};const finish=(error,value)=>{if(done)return;done=true;clearTimeout(timer);agent.destroy();error?reject(error):resolve(value);};try{handle=request({protocol:'http:',hostname:HOST,port:443,method:'POST',path:input.path,agent,setHost:true,headers:{host:HOST,authorization:`Basic ${auth}`,'content-type':'application/json','content-length':input.body.length}},response=>{response.on('data',chunk=>{size+=chunk.length;if(size>max_response_bytes){handle.destroy();finish(fail('RESPONSE_TOO_LARGE'));}else chunks.push(chunk);});response.on('error',event=>finish(fail(`RESPONSE:${event.code??'ERROR'}`)));response.on('end',()=>finish(null,{status:Number(response.statusCode),body:Buffer.concat(chunks),attempts:1}));});}catch(error){finish(fail(`REQUEST:${error.code??'ERROR'}`));return;}handle.once('error',event=>finish(fail(`REQUEST:${event.code??'ERROR'}`)));timer=setTimeout(()=>{handle.destroy();finish(fail('TIMEOUT','DATAFORSEO_TLS_TIMEOUT'));},timeout_ms);handle.end(input.body);});
   };
 }

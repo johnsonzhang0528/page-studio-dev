@@ -1,8 +1,8 @@
-import {validateKeywordOverviewRequest} from './dataforseo-contract.mjs';
+import {validateKeywordOverviewRequest,validateKeywordIdeasRequest} from './dataforseo-contract.mjs';
 import {validateSerpStandardRequest} from './dataforseo-serp-contract.mjs';
 import {authorizeFourLayerBudget} from './budget-policy.mjs';
 import {validateProviderRegistry} from './provider-registry.mjs';
-import {estimateKeywordOverviewMicrousd} from './provider-registry.mjs';
+import {estimateKeywordOverviewMicrousd,estimateKeywordIdeasMicrousd} from './provider-registry.mjs';
 
 export class BillingGateway {
   constructor({ledger, registry, budget_policy, usage_reader, clock = () => Date.now(), activation_mode = 'disabled'}) {
@@ -20,6 +20,7 @@ export class BillingGateway {
     const registryCheck = validateProviderRegistry(this.registry, {now: this.clock(), expected_activation: this.activationMode});
     if (!registryCheck.ok) return {ok: false, reason: 'PROVIDER_DISABLED_OR_INVALID', errors: registryCheck.errors};
     const contract = capability === 'keyword_overview' ? validateKeywordOverviewRequest(request)
+      : capability === 'keyword_ideas' ? validateKeywordIdeasRequest(request)
       : capability === 'serp_standard' ? validateSerpStandardRequest(request)
       : {ok: false, errors: ['CAPABILITY_FORBIDDEN']};
     if (!contract.ok) return {ok: false, reason: 'REQUEST_CONTRACT_REJECTED', errors: contract.errors};
@@ -27,6 +28,7 @@ export class BillingGateway {
       const trustedEstimate = estimateKeywordOverviewMicrousd(this.registry, request.keywords.length);
       if (estimated_microusd !== trustedEstimate) return {ok: false, reason: 'UNTRUSTED_COST_ESTIMATE', trusted_estimated_microusd: trustedEstimate};
     }
+    if (capability === 'keyword_ideas') {const trustedEstimate=estimateKeywordIdeasMicrousd(this.registry,request.limit);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
     const usage = await this.usageReader({project_id, day});
     const budget = authorizeFourLayerBudget({estimated_microusd, ...usage}, this.budgetPolicy);
     if (!budget.ok) return budget;

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {authorizeEstimatedCost, requestFingerprint, validateKeywordOverviewRequest} from '../lib/dataforseo-contract.mjs';
+import {authorizeEstimatedCost, requestFingerprint, validateKeywordOverviewRequest,validateKeywordIdeasRequest} from '../lib/dataforseo-contract.mjs';
 import {classifyDataForSeoStatus, validateDataForSeoEnvelope} from '../lib/dataforseo-errors.mjs';
 import {normalizeKeywordOverview} from '../lib/dataforseo-normalizer.mjs';
 
@@ -30,6 +30,8 @@ test('request and budget bounds are hard limits', () => {
   assert.deepEqual(authorizeEstimatedCost(20_001), {ok:false, reason:'REQUEST_BUDGET_EXCEEDED'});
   assert.equal(authorizeEstimatedCost(20_000).ok, true);
 });
+
+test('keyword ideas permits one exact bounded discovery shape only',()=>{const request={keywords:['網站架設','SEO'],location_code:2158,language_code:'zh-TW',closely_variants:false,ignore_synonyms:false,include_serp_info:false,include_clickstream_data:false,limit:60,filters:[['keyword_info.search_volume','>',0]],order_by:['relevance,desc'],tag:'page-autodev-ideas-test'};assert.equal(validateKeywordIdeasRequest(request).ok,true);for(const mutation of [value=>value.limit=61,value=>value.include_serp_info=true,value=>value.include_clickstream_data=true,value=>value.filters=[],value=>value.offset=1,value=>value.location_code=2840]){const copy=structuredClone(request);mutation(copy);assert.equal(validateKeywordIdeasRequest(copy).ok,false);}});
 
 test('HTTP success cannot hide task failure', () => {
   const failed = structuredClone(fixture);

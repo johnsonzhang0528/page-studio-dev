@@ -11,7 +11,7 @@
     "port": 443,
     "tls_servername": "api.dataforseo.com",
     "minimum_tls": "TLSv1.2",
-    "paths": ["/v3/dataforseo_labs/google/keyword_overview/live"],
+    "paths": ["/v3/dataforseo_labs/google/keyword_overview/live", "/v3/dataforseo_labs/google/keyword_ideas/live"],
     "methods": ["POST"],
     "redirects": 0,
     "retries": 0

@@ -34,7 +34,7 @@ export function normalizeKeywordOverview(envelope, context) {
       module: 'keyword',
       metric_subject: String(item.keyword ?? ''),
       provider: 'dataforseo',
-      endpoint: 'dataforseo_labs/google/keyword_overview/live',
+      endpoint: context.endpoint ?? 'dataforseo_labs/google/keyword_overview/live',
       location_code: context.location_code,
       language_code: context.language_code,
       retrieved_at: context.retrieved_at,
