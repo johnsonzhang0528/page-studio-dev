@@ -15,7 +15,8 @@ export function validateProviderRegistry(registry, options = {}) {
   if (!Number.isFinite(priceCaptured) || priceCaptured > now || priceExpiry - priceCaptured > 7 * 86400000) errors.push('PRICE_SNAPSHOT_WINDOW_INVALID');
   if (registry.price_snapshot?.source !== 'https://dataforseo.com/pricing/dataforseo-labs/dataforseo-google-api') errors.push('PRICE_SOURCE_UNTRUSTED');
   for (const field of ['keyword_overview_task_microusd','keyword_overview_item_microusd']) if (!Number.isSafeInteger(registry.price_snapshot?.[field]) || registry.price_snapshot[field] < 0) errors.push(`PRICE_MISSING:${field}`);
-  if (registry.activation !== 'disabled') errors.push('PREINTEGRATION_MUST_BE_DISABLED');
+  const expectedActivation = options.expected_activation ?? 'disabled';
+  if (!['disabled','canary'].includes(expectedActivation) || registry.activation !== expectedActivation) errors.push('ACTIVATION_NOT_AUTHORIZED');
   if (registry.fallback?.automatic !== false) errors.push('AUTOMATIC_FALLBACK_FORBIDDEN');
   return {ok:errors.length === 0, errors};
 }

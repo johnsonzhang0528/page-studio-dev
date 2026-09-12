@@ -5,7 +5,7 @@ import {validateProviderRegistry} from './provider-registry.mjs';
 import {estimateKeywordOverviewMicrousd} from './provider-registry.mjs';
 
 export class BillingGateway {
-  constructor({ledger, registry, budget_policy, usage_reader, clock = () => Date.now()}) {
+  constructor({ledger, registry, budget_policy, usage_reader, clock = () => Date.now(), activation_mode = 'disabled'}) {
     if (!ledger || typeof ledger.reserve !== 'function') throw new Error('LEDGER_REQUIRED');
     if (typeof usage_reader !== 'function') throw new Error('USAGE_READER_REQUIRED');
     this.ledger = ledger;
@@ -13,10 +13,11 @@ export class BillingGateway {
     this.budgetPolicy = budget_policy;
     this.usageReader = usage_reader;
     this.clock = clock;
+    this.activationMode = activation_mode;
   }
 
   async authorize({capability, request, estimated_microusd, project_id, day}) {
-    const registryCheck = validateProviderRegistry(this.registry, {now: this.clock()});
+    const registryCheck = validateProviderRegistry(this.registry, {now: this.clock(), expected_activation: this.activationMode});
     if (!registryCheck.ok) return {ok: false, reason: 'PROVIDER_DISABLED_OR_INVALID', errors: registryCheck.errors};
     const contract = capability === 'keyword_overview' ? validateKeywordOverviewRequest(request)
       : capability === 'serp_standard' ? validateSerpStandardRequest(request)
