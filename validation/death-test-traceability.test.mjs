@@ -41,11 +41,11 @@ const cases=[
   ...ranges(28,28,'WP-01',['architecture']), ...ranges(29,30,'WP-10',['parallel']), ...ranges(31,32,'WP-05',['concurrency']),
   ...ranges(33,33,'WP-06',['durable']), ...ranges(34,34,'WP-07/WP-01',['quality']), ...ranges(35,41,'WP-01/WP-02',['architecture']),
   ...ranges(42,44,'WP-09',['findings']), ...ranges(45,45,'WP-01',['mutation']), ...ranges(46,46,'WP-05/WP-12',['concurrency']),
-  ...ranges(47,53,'WP-13',['tool_broker_escape']), ...ranges(54,61,'WP-14',['service_isolation']), ...ranges(62,68,'WP-15',['hybrid_controller']), ...ranges(69,76,'WP-16',['isolated_project_flows']), ...ranges(77,82,'WP-17',['fixed_tunnel']), ...ranges(83,89,'WP-18',['controller_credential']), ...ranges(90,90,'WP-17',['fixed_tunnel']), ...ranges(91,91,'WP-17',['billing_egress_tls']), ...ranges(92,92,'WP-17',['billing_egress_unix_client']), ...ranges(93,100,'WP-19',['shadow_rollout']), ...ranges(101,103,'WP-20',['canary_activation']), ...ranges(104,109,'WP-13',['tool_broker_escape']), ...ranges(110,110,'WP-07',['quality']), ...ranges(111,111,'WP-05',['ai_ledger'])
+  ...ranges(47,53,'WP-13',['tool_broker_escape']), ...ranges(54,61,'WP-14',['service_isolation']), ...ranges(62,68,'WP-15',['hybrid_controller']), ...ranges(69,76,'WP-16',['isolated_project_flows']), ...ranges(77,82,'WP-17',['fixed_tunnel']), ...ranges(83,89,'WP-18',['controller_credential']), ...ranges(90,90,'WP-17',['fixed_tunnel']), ...ranges(91,91,'WP-17',['billing_egress_tls']), ...ranges(92,92,'WP-17',['billing_egress_unix_client']), ...ranges(93,100,'WP-19',['shadow_rollout']), ...ranges(101,103,'WP-20',['canary_activation']), ...ranges(104,109,'WP-13',['tool_broker_escape']), ...ranges(110,110,'WP-07',['quality']), ...ranges(111,112,'WP-05',['ai_ledger'])
 ];
 
-assert.equal(cases.length,111);
-assert.deepEqual(cases.map(item=>item.id),Array.from({length:111},(_,index)=>`DT-${String(index+1).padStart(3,'0')}`));
+assert.equal(cases.length,112);
+assert.deepEqual(cases.map(item=>item.id),Array.from({length:112},(_,index)=>`DT-${String(index+1).padStart(3,'0')}`));
 const required=[...new Set(cases.flatMap(item=>item.executables))],results=new Map();
 for(const name of required){
   const check=checks[name]; assert.ok(check,`UNKNOWN_EXECUTABLE_EVIDENCE:${name}`);

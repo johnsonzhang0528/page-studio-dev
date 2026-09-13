@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { runQualityGate } from '../lib/quality.mjs';
+import { documentHasPlaceholder, runQualityGate } from '../lib/quality.mjs';
 import { migrateInputIndexValue, prepareControllerDispatch, validateControllerJson } from '../lib/schema-registry.mjs';
 
 const digest='a'.repeat(64);
+assert.equal(documentHasPlaceholder('已知事項尚未開始驗證，列為 release risk。'),false);assert.equal(documentHasPlaceholder('狀態：TBD'),true);assert.equal(documentHasPlaceholder('- 待補充'),true);
 const v1={schema_version:1,files:[{original_path:'docs/input/a.md',current_path:'docs/input/brief/a.md',category:'brief',sha256:digest,readable:true}]};
 const v2={schema_version:2,files:[{id:'INPUT-001',original_path:'docs/input/b.md',current_path:'docs/input/plans/b.md',category:'plans',sha256:digest,readable:true}]};
 assert.equal(validateControllerJson('.ai/INPUT_INDEX.json',v1),null,'production-derived v1 files[] 必須通過');
