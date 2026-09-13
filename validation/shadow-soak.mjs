@@ -44,17 +44,17 @@ const scenarioCommands={
   isolation:['validation/tool-broker-escape-death.test.mjs'],
   migration:['validation/isolated-project-flows.test.mjs']
 };
-function residueSnapshot(){
-  return new Set(fs.readdirSync(os.tmpdir()).filter(name=>/^(page-autodev-(?:state|tx|parallel|shadow|death|property|selftest|git-checkpoint)-)/.test(name)));
-}
 function runResilienceScenario(name){
   const argv=scenarioCommands[name]; assert.ok(argv,`UNKNOWN_SOAK_SCENARIO:${name}`);
-  const before=residueSnapshot(),started=Date.now(),run=spawnSync(process.execPath,argv,{cwd:controllerRoot,encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});
-  assert.equal(run.error,undefined,`${name} 無法執行：${run.error?.message??''}`);
-  assert.equal(run.status,0,`${name} 故障注入失敗：${String(run.stderr||run.stdout).slice(-4000)}`);
-  const after=residueSnapshot(),added=[...after].filter(item=>!before.has(item));
-  assert.deepEqual(added,[],`${name} 留下 orphan temp workspace：${added.join(',')}`);
-  return {ok:true,elapsed_ms:Date.now()-started};
+  const scenarioTempRoot=fs.mkdtempSync(path.join(os.tmpdir(),`page-autodev-soak-${name}-`)),started=Date.now();
+  try {
+    const run=spawnSync(process.execPath,argv,{cwd:controllerRoot,encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024,env:{...process.env,TMPDIR:scenarioTempRoot,TMP:scenarioTempRoot,TEMP:scenarioTempRoot}});
+    assert.equal(run.error,undefined,`${name} 無法執行：${run.error?.message??''}`);
+    assert.equal(run.status,0,`${name} 故障注入失敗：${String(run.stderr||run.stdout).slice(-4000)}`);
+    const residue=fs.readdirSync(scenarioTempRoot).filter(entry=>/^page-autodev-/u.test(entry));
+    assert.deepEqual(residue,[],`${name} 留下 owned orphan temp workspace：${residue.join(',')}`);
+    return {ok:true,elapsed_ms:Date.now()-started};
+  } finally { fs.rmSync(scenarioTempRoot,{recursive:true,force:true}); }
 }
 function evaluateOnce(project){
   const temporaryRoot=fs.mkdtempSync(path.join(os.tmpdir(),'page-autodev-shadow-'));
