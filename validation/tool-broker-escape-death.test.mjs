@@ -23,5 +23,6 @@ try{
   const writable=createToolBrokerRuntime({project,mode:'isolated_write',read_scope:['.'],write_scope:['.'],shell_argv:[]});writable.call('write_file',{path:'.ai/INPUT_INDEX.json',content:'{}'});assert.throws(()=>writable.call('write_file',{path:'.ai/PROJECT_STATE.json',content:'{}'}));console.log('DEATH_EVIDENCE DT-106 controller_state_overwrite_denied');
   fs.writeFileSync(path.join(project,'src','destination'),'keep');assert.throws(()=>writable.call('move_file',{source:'src/ok',destination:'src/destination'}));assert.equal(fs.readFileSync(path.join(project,'src','destination'),'utf8'),'keep');console.log('DEATH_EVIDENCE DT-107 move_overwrite_denied');
   assert.throws(()=>writable.call('move_file',{source:'src/ok',destination:'../escaped'}));assert.equal(fs.existsSync(path.join(parent,'escaped')),false);console.log('DEATH_EVIDENCE DT-108 move_path_escape_denied');
+  assert.throws(()=>broker.call('sha256_file',{path:'../credential'}));console.log('DEATH_EVIDENCE DT-109 hash_path_escape_denied');
 }finally{fs.rmSync(parent,{recursive:true,force:true});}
 console.log('TOOL_BROKER_ESCAPE_DEATH_TESTS_OK');

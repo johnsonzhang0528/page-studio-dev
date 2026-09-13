@@ -31,6 +31,11 @@ const migratedOnDisk=JSON.parse(fs.readFileSync(path.join(preflightAi,'INPUT_IND
 assert.equal(migratedOnDisk.schema_version,1); assert.equal(Array.isArray(migratedOnDisk.files),true);
 const preparedAgain=prepareControllerDispatch(preflightProject,{writeMigration:true});
 assert.equal(preparedAgain.ok,true); assert.equal(preparedAgain.migration.changed,false,'檔案 migration 第二次必須 no-op');
+fs.mkdirSync(path.join(preflightProject,'docs','input'),{recursive:true});fs.writeFileSync(path.join(preflightProject,'docs','input','agent.md'),'agent source');
+fs.writeFileSync(path.join(preflightAi,'INPUT_INDEX.json'),JSON.stringify({schema_version:1,files:[{path:'docs/input/agent.md',sha256:null}]}));
+const normalized=prepareControllerDispatch(preflightProject,{writeMigration:true});assert.equal(normalized.ok,true);assert.equal(normalized.migration.normalization,'controller_verified_files');
+const normalizedFile=JSON.parse(fs.readFileSync(path.join(preflightAi,'INPUT_INDEX.json'),'utf8')).files[0];assert.equal(normalizedFile.original_path,'docs/input/agent.md');assert.equal(normalizedFile.current_path,'docs/input/agent.md');assert.match(normalizedFile.sha256,/^[a-f0-9]{64}$/);assert.equal(normalizedFile.readable,true);
+console.log('DEATH_EVIDENCE DT-110 invalid_agent_index_normalized_from_filesystem');
 fs.writeFileSync(path.join(preflightAi,'INPUT_INDEX.json'),JSON.stringify({schema_version:99,files:[]}));
 const rejected=prepareControllerDispatch(preflightProject,{writeMigration:true});
 assert.equal(rejected.ok,false); assert.match(rejected.checks.find(check=>!check.ok)?.detail??'',/支援版本/);
