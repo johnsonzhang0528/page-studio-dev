@@ -26,6 +26,7 @@ const checks={
   hybrid_controller:{argv:['validation/hybrid-controller-death.test.mjs'],marker:'HYBRID_CONTROLLER_DEATH_TESTS_OK'},
   isolated_project_flows:{argv:['validation/isolated-project-flows.test.mjs'],marker:'ISOLATED_PROJECT_FLOWS_OK'},
   fixed_tunnel:{argv:['validation/fixed-egress-tunnel.test.mjs'],marker:'FIXED_EGRESS_TUNNEL_TESTS_OK'},
+  billing_egress_tls:{argv:['validation/billing-egress-tls.test.mjs'],marker:'BILLING_EGRESS_TLS_TESTS_OK'},
   controller_credential:{argv:['validation/billing-gateway-credential.test.mjs'],marker:'BILLING_GATEWAY_CREDENTIAL_TESTS_OK'}
 };
 const ranges=(from,to,workPackage,executables)=>Array.from({length:to-from+1},(_,index)=>({id:`DT-${String(from+index).padStart(3,'0')}`,work_package:workPackage,executables}));
@@ -36,11 +37,11 @@ const cases=[
   ...ranges(28,28,'WP-01',['architecture']), ...ranges(29,30,'WP-10',['parallel']), ...ranges(31,32,'WP-05',['concurrency']),
   ...ranges(33,33,'WP-06',['durable']), ...ranges(34,34,'WP-07/WP-01',['quality']), ...ranges(35,41,'WP-01/WP-02',['architecture']),
   ...ranges(42,44,'WP-09',['findings']), ...ranges(45,45,'WP-01',['mutation']), ...ranges(46,46,'WP-05/WP-12',['concurrency']),
-  ...ranges(47,53,'WP-13',['tool_broker_escape']), ...ranges(54,61,'WP-14',['service_isolation']), ...ranges(62,68,'WP-15',['hybrid_controller']), ...ranges(69,76,'WP-16',['isolated_project_flows']), ...ranges(77,82,'WP-17',['fixed_tunnel']), ...ranges(83,89,'WP-18',['controller_credential'])
+  ...ranges(47,53,'WP-13',['tool_broker_escape']), ...ranges(54,61,'WP-14',['service_isolation']), ...ranges(62,68,'WP-15',['hybrid_controller']), ...ranges(69,76,'WP-16',['isolated_project_flows']), ...ranges(77,82,'WP-17',['fixed_tunnel']), ...ranges(83,89,'WP-18',['controller_credential']), ...ranges(90,90,'WP-17',['fixed_tunnel']), ...ranges(91,91,'WP-17',['billing_egress_tls'])
 ];
 
-assert.equal(cases.length,89);
-assert.deepEqual(cases.map(item=>item.id),Array.from({length:89},(_,index)=>`DT-${String(index+1).padStart(3,'0')}`));
+assert.equal(cases.length,91);
+assert.deepEqual(cases.map(item=>item.id),Array.from({length:91},(_,index)=>`DT-${String(index+1).padStart(3,'0')}`));
 const required=[...new Set(cases.flatMap(item=>item.executables))],results=new Map();
 for(const name of required){
   const check=checks[name]; assert.ok(check,`UNKNOWN_EXECUTABLE_EVIDENCE:${name}`);
