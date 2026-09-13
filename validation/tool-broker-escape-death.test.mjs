@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createToolBrokerRuntime } from '../lib/tool-broker-runtime.mjs';
+import { buildControlledAgentDefinition } from '../lib/claude-adapter.mjs';
 
 const parent=fs.mkdtempSync(path.join(os.tmpdir(),'broker-death-')),project=path.join(parent,'project');fs.mkdirSync(path.join(project,'src'),{recursive:true});fs.writeFileSync(path.join(parent,'credential'),'never-read');fs.writeFileSync(path.join(project,'src','ok'),'ok');
 try{
@@ -17,5 +18,10 @@ try{
     ['DT-053','unknown_tool_escape',()=>broker.call('unknown_tool',{})]
   ];
   for(const [id,name,attack] of attacks){assert.throws(attack);console.log(`DEATH_EVIDENCE ${id} ${name}`);}assert.equal(fs.existsSync(path.join(project,'src','pwned')),false);
+  const controlled=buildControlledAgentDefinition('intake','mcp__page_autodev__read_file,mcp__page_autodev__write_file');assert.deepEqual(JSON.parse(controlled).intake.tools,['mcp__page_autodev__read_file','mcp__page_autodev__write_file']);assert.doesNotMatch(controlled,/\b(?:Read|Write|Edit|Grep|Glob|Bash)\b/);console.log('DEATH_EVIDENCE DT-104 global_agent_builtin_override_denied');
+  assert.doesNotThrow(()=>broker.call('list_directory',{path:'.'}));console.log('DEATH_EVIDENCE DT-105 project_root_false_traversal_denied');
+  const writable=createToolBrokerRuntime({project,mode:'isolated_write',read_scope:['.'],write_scope:['.'],shell_argv:[]});writable.call('write_file',{path:'.ai/INPUT_INDEX.json',content:'{}'});assert.throws(()=>writable.call('write_file',{path:'.ai/PROJECT_STATE.json',content:'{}'}));console.log('DEATH_EVIDENCE DT-106 controller_state_overwrite_denied');
+  fs.writeFileSync(path.join(project,'src','destination'),'keep');assert.throws(()=>writable.call('move_file',{source:'src/ok',destination:'src/destination'}));assert.equal(fs.readFileSync(path.join(project,'src','destination'),'utf8'),'keep');console.log('DEATH_EVIDENCE DT-107 move_overwrite_denied');
+  assert.throws(()=>writable.call('move_file',{source:'src/ok',destination:'../escaped'}));assert.equal(fs.existsSync(path.join(parent,'escaped')),false);console.log('DEATH_EVIDENCE DT-108 move_path_escape_denied');
 }finally{fs.rmSync(parent,{recursive:true,force:true});}
 console.log('TOOL_BROKER_ESCAPE_DEATH_TESTS_OK');
