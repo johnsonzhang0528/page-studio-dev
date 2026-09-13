@@ -15,6 +15,7 @@
     "validate:billing-config": "node bin/page-autodev-validate-billing-config.mjs",
     "finalize:release-evidence": "node bin/page-autodev-finalize-release-evidence.mjs",
     "test:release-evidence": "node validation/soak-evidence-chain.test.mjs && node validation/soak-crash-resume.test.mjs && node validation/release-canary-evidence.test.mjs && node validation/release-evidence-finalizer.test.mjs",
-    "test:shadow-rollout": "node validation/shadow-rollout-validation.test.mjs"
+    "test:shadow-rollout": "node validation/shadow-rollout-validation.test.mjs",
+    "test:canary-activation": "node validation/canary-activation.test.mjs"
   }
 }
