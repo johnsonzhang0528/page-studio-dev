@@ -10,7 +10,7 @@ const attacks=[
   ['DT-057','read_container_auth',()=>assert.match(lines.InaccessiblePaths,/%h\/\.docker(?:\s|$)/)],
   ['DT-058','read_kube_auth',()=>assert.match(lines.InaccessiblePaths,/%h\/\.kube(?:\s|$)/)],
   ['DT-059','inspect_host_processes',()=>{assert.equal(lines.ProtectProc,'invisible');assert.equal(lines.ProcSubset,'pid');}],
-  ['DT-060','gain_privilege',()=>{assert.equal(lines.NoNewPrivileges,'true');assert.equal(lines.CapabilityBoundingSet,'');}],
+  ['DT-060','gain_privilege',()=>{assert.equal(lines.NoNewPrivileges,'true');assert.equal(lines.RestrictSUIDSGID,'true');}],
   ['DT-061','mount_or_namespace_escape',()=>assert.equal(lines.RestrictNamespaces,'true')]
 ];
 for(const [id,name,deathCheck] of attacks){deathCheck();console.log(`DEATH_EVIDENCE ${id} ${name}`);}
