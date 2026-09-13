@@ -5,6 +5,8 @@ import {quotaAdmission,estimateQuotaCost,fairQueue,staggeredWake,reserveAccountQ
 const now=Date.parse('2026-09-07T10:00:00Z'),usage={available:true,fiveHour:{remaining:100,resetsAt:'2026-09-07T15:00:00Z'},sevenDay:{remaining:100,resetsAt:'2026-09-14T00:00:00Z'}},cost=estimateQuotaCost({model:'opus',turns:20});
 assert.equal(quotaAdmission({usage,request:{project:'a',cost},now}).ok,true);
 assert.equal(quotaAdmission({usage:null,request:{project:'a',cost},now}).ok,false,'usage 不可用必須 fail closed');
+const staleUsage={...usage,stale:true};
+assert.equal(quotaAdmission({usage:staleUsage,request:{project:'a',cost:{five_hour_percent:93,seven_day_percent:1}},now,fiveHourFloor:3,staleSafetyFloor:5}).ok,false,'快取額度必須額外保留安全緩衝');
 const occupied=[{project:'a',cost,expires_at:'2026-09-07T11:00:00Z'}]; assert.equal(quotaAdmission({usage,request:{project:'b',cost},reservations:occupied,now,maxConcurrent:1}).reason,'account_concurrency_limit');
 const low={available:true,fiveHour:{remaining:3,resetsAt:'2026-09-07T15:00:00Z'},sevenDay:{remaining:100,resetsAt:'2026-09-14T00:00:00Z'}}; assert.equal(quotaAdmission({usage:low,request:{project:'a',cost},now}).reason,'insufficient_reserved_quota');
 assert.deepEqual(fairQueue([{project:'new',priority:0,queued_at:'2026-09-07T09:59:00Z'},{project:'old',priority:0,queued_at:'2026-09-07T09:00:00Z'}],{now}).map(x=>x.project),['old','new'],'等待較久者優先，避免 starvation');
