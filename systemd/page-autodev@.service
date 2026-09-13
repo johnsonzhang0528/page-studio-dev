@@ -15,7 +15,6 @@ KillSignal=SIGTERM
 TimeoutStopSec=30s
 NoNewPrivileges=true
 PrivateTmp=true
-PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=true
 ProtectClock=true
