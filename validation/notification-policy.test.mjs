@@ -13,4 +13,6 @@ const recorderStart=source.indexOf('function recordClaudeInvocationSafe');
 const recorderEnd=source.indexOf('\n}',recorderStart);
 const recorder=source.slice(recorderStart,recorderEnd);
 assert(recorder.includes('result?.quota_admission')&&recorder.includes('provider_invocation_not_started'),'未啟動 provider 的 admission 暫停不得寫入 invocation ledger');
+assert(!source.includes("terminal_reason:'quota_admission',api_error_status:429"),'本地 admission 拒絕不得偽裝成 provider HTTP 429');
+assert(source.includes('!item.result.quota_admission&&quotaError(item.combined)'),'併行 Gate 必須排除本地 admission 拒絕，避免誤報 Claude 額度耗盡');
 console.log('NOTIFICATION_POLICY_TESTS_OK');
