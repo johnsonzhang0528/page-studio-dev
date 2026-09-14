@@ -1,0 +1,35 @@
+[Unit]
+Description=Page Studio 專案 %i 受控單次執行服務
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/page-studio-dev/projects/%i
+ExecStart=%h/page-studio-dev/bin/page-autodev run %i
+Environment=PAGE_AUTODEV_NO_BACKGROUND=1
+LoadCredential=billing_reservation_credential:/etc/page-autodev/credentials/billing-reservation-credential
+SuccessExitStatus=75
+Nice=10
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+ReadOnlyPaths=%h/page-studio-dev %h/.local/bin/claude %h/.claude %h/.config/page-autodev/telegram.env
+ReadWritePaths=%h/page-studio-dev/projects/%i %h/.cache/claude
+InaccessiblePaths=%h/.ssh %h/.aws %h/.azure %h/.kube %h/.docker %h/.gnupg
