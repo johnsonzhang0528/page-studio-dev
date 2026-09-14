@@ -8,6 +8,8 @@ const egressSocket=read('page-autodev-openai-egress.socket');
 const egressService=read('page-autodev-openai-egress.service');
 const tunnelSocket=read('page-autodev-openai-tunnel.socket');
 const tunnelService=read('page-autodev-openai-tunnel.service');
+const refreshService=read('page-autodev-controller-credential-refresh.service');
+const refreshTimer=read('page-autodev-controller-credential-refresh.timer');
 const gatewayDaemon=fs.readFileSync(new URL('../bin/page-autodev-billing-gateway-daemon.mjs',import.meta.url),'utf8');
 const tunnelDaemon=fs.readFileSync(new URL('../bin/page-autodev-openai-tunnel-daemon.mjs',import.meta.url),'utf8');
 
@@ -46,4 +48,9 @@ assert.match(gatewayService,/^StateDirectory=page-autodev-billing-gateway$/m);as
 assert.match(gatewayDaemon,/createBillingGatewayRuntime/);assert.match(gatewayDaemon,/createBillingEgressUnixClient/);assert.doesNotMatch(gatewayDaemon,/BILLING_CONTROL_UNAVAILABLE|handler:\s*unavailable/);
 assert.doesNotMatch(gatewayDaemon,/openai_api_key|OPENAI_API_KEY/);
 
+assert.match(refreshService,/^ExecStart=\/usr\/bin\/node \/opt\/page-autodev\/bin\/page-autodev-issue-controller-credential\.mjs$/m);
+assert.match(refreshService,/^LoadCredential=gateway_credential_secret:\/etc\/page-autodev\/credentials\/gateway-credential-secret$/m);
+assert.match(refreshService,/^Environment=CONTROLLER_CREDENTIAL_OUTPUT=\/etc\/page-autodev\/credentials\/billing-reservation-credential$/m);
+assert.match(refreshService,/^PrivateNetwork=true$/m);assert.match(refreshService,/^ProtectSystem=strict$/m);assert.match(refreshService,/^ReadWritePaths=\/etc\/page-autodev\/credentials$/m);
+assert.match(refreshTimer,/^OnUnitActiveSec=12h$/m);assert.match(refreshTimer,/^Persistent=true$/m);assert.match(refreshTimer,/^WantedBy=timers\.target$/m);
 console.log('BILLING_SYSTEMD_ARTIFACT_TESTS_OK');
