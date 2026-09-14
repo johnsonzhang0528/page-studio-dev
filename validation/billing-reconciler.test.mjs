@@ -124,6 +124,10 @@ assert.equal(
   firewall.snapshot().committed[0].settlement_outcome,
   "NOT_ACCEPTED",
 );
+const legacyStatePath = path.join(root, "billing-state.json");
+const legacyState = JSON.parse(fs.readFileSync(legacyStatePath, "utf8"));
+delete legacyState.committed[0].settlement_outcome;
+fs.writeFileSync(legacyStatePath, JSON.stringify(legacyState));
 const retrySpec = createInvocationSpec({
   ...base,
   invocation_id: "inv-1-retry",
