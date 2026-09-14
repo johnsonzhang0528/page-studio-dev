@@ -9,4 +9,8 @@ const branch=source.slice(start,end);
 assert(branch.includes('scheduleServiceRetry'),'額度資訊不可用時仍須自動重試');
 assert(!branch.includes('notifyTelegram'),'額度資訊暫時不可用不得發送 Telegram');
 assert(branch.includes('usage_visibility_paused'),'額度資訊不可用仍須保留稽核歷史');
+const recorderStart=source.indexOf('function recordClaudeInvocationSafe');
+const recorderEnd=source.indexOf('\n}',recorderStart);
+const recorder=source.slice(recorderStart,recorderEnd);
+assert(recorder.includes('result?.quota_admission')&&recorder.includes('provider_invocation_not_started'),'未啟動 provider 的 admission 暫停不得寫入 invocation ledger');
 console.log('NOTIFICATION_POLICY_TESTS_OK');
