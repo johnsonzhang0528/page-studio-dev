@@ -4,7 +4,15 @@ import {quotaAdmission,estimateQuotaCost,fairQueue,staggeredWake,reserveAccountQ
 
 const now=Date.parse('2026-09-07T10:00:00Z'),usage={available:true,fiveHour:{remaining:100,resetsAt:'2026-09-07T15:00:00Z'},sevenDay:{remaining:100,resetsAt:'2026-09-14T00:00:00Z'}},cost=estimateQuotaCost({model:'opus',turns:20});
 assert.equal(quotaAdmission({usage,request:{project:'a',cost},now}).ok,true);
-assert.equal(quotaAdmission({usage:null,request:{project:'a',cost},now}).ok,false,'usage 不可用必須 fail closed');
+const degraded=quotaAdmission({usage:{available:false,reason:'HTTP 429'},request:{project:'a',cost:estimateQuotaCost({model:'opus',turns:8})},now});
+assert.equal(degraded.ok,true,'usage 不可用時應允許有界限的保守降級工作單元');
+assert.equal(degraded.reason,'admitted_degraded');
+assert.equal(degraded.degraded,true);
+assert.equal(quotaAdmission({usage:null,request:{project:'a',cost},now,degradedAdmissionEnabled:false}).reason,'usage_unavailable_fail_closed','可明確停用降級模式以恢復 fail closed');
+assert.equal(quotaAdmission({usage:null,request:{project:'a',cost},now,degradedMaxFiveHour:1}).reason,'degraded_unit_budget_exceeded','未知額度時不得接受超過降級預算的工作單元');
+const degradedCap=capTurnsForQuota({model:'opus',requestedTurns:22,usage:{available:false},settings:{degraded_max_turns_per_unit:8}}); assert.equal(degradedCap.turns,8,'未知額度時所有高風險工作單元必須限制為 8 turns');
+const degradedOccupied=[{project:'a',cost:estimateQuotaCost({model:'opus',turns:8}),expires_at:'2026-09-07T11:00:00Z'}];
+assert.equal(quotaAdmission({usage:null,request:{project:'a',cost:estimateQuotaCost({model:'opus',turns:8})},reservations:degradedOccupied,now}).reason,'degraded_account_concurrency_limit','降級模式即使同專案也只能有一個帳號級工作單元');
 const staleUsage={...usage,stale:true};
 assert.equal(quotaAdmission({usage:staleUsage,request:{project:'a',cost:{five_hour_percent:93,seven_day_percent:1}},now,fiveHourFloor:3,staleSafetyFloor:5}).ok,false,'快取額度必須額外保留安全緩衝');
 const occupied=[{project:'a',cost,expires_at:'2026-09-07T11:00:00Z'}]; assert.equal(quotaAdmission({usage,request:{project:'b',cost},reservations:occupied,now,maxConcurrent:1}).reason,'account_concurrency_limit');
