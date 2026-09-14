@@ -14,6 +14,6 @@ export function buildSeedDiscoveryPlan(seeds,{per_seed_limit=20,location_code=21
   return normalized.map((seed,index)=>({
     source_seed:seed,
     ordinal:index,
-    request:{keywords:[seed],location_code,language_code,closely_variants:false,ignore_synonyms:false,include_serp_info:false,include_clickstream_data:false,limit:per_seed_limit,filters:[['keyword_info.search_volume','>',0]],order_by:['relevance,desc'],tag:`page-autodev-seed-${index+1}`}
+    request:{keywords:[seed],location_code,language_code,closely_variants:false,ignore_synonyms:false,include_serp_info:false,include_clickstream_data:false,limit:per_seed_limit,filters:[['keyword_info.search_volume','>',0]],order_by:['relevance,desc'],tag:`page-autodev-ideas-seed-${index+1}`}
   }));
 }

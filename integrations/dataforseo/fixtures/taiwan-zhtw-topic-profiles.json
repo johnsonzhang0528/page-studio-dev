@@ -1,0 +1,8 @@
+{
+  "網站架設": {"include_terms": ["網站", "網頁", "架站", "wordpress", "wix"], "exclude_terms": ["line網頁版", "真空泵浦", "空壓機"]},
+  "SEO": {"include_terms": ["seo", "搜尋引擎", "關鍵字", "自然排名"], "exclude_terms": ["ceo"]},
+  "記帳軟體": {"include_terms": ["記帳", "帳務", "會計", "發票", "報稅"], "exclude_terms": ["手寫帳簿"]},
+  "空氣清淨機": {"include_terms": ["空氣清淨", "清淨機", "濾網", "pm2.5", "過敏"], "exclude_terms": ["打氣機", "空壓機", "真空泵浦", "氣泵"]},
+  "日本自由行": {"include_terms": ["日本", "東京", "大阪", "京都", "沖繩", "北海道", "行程", "旅遊"], "exclude_terms": ["日本語學習"]},
+  "英文學習": {"include_terms": ["英文", "英語", "單字", "文法", "聽力", "口說", "toeic", "ielts", "toefl"], "exclude_terms": ["網站設計英文", "網址英文"]}
+}

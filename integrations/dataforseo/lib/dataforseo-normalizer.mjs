@@ -54,3 +54,15 @@ export function normalizeKeywordOverview(envelope, context) {
     };
   });
 }
+
+export function normalizeBalancedKeywordIdeas(envelope,contexts){
+  const validation=validateDataForSeoEnvelope(envelope);
+  if(!validation.ok)throw Object.assign(new Error(`DATAFORSEO_RESPONSE_REJECTED:${validation.errors.join(',')}`),{code:'DATAFORSEO_RESPONSE_REJECTED'});
+  if(!Array.isArray(contexts)||contexts.length!==envelope.tasks.length)throw new Error('TASK_CONTEXT_CARDINALITY_MISMATCH');
+  return envelope.tasks.flatMap((task,index)=>{
+    const context=contexts[index];
+    if(!context?.source_seed||!context?.request_fingerprint||!context?.retrieved_at||context?.location_code!==2158||context?.language_code!=='zh-TW')throw new Error('SEED_EVIDENCE_CONTEXT_REQUIRED');
+    const taskEnvelope={...envelope,tasks:[task]};
+    return normalizeKeywordOverview(taskEnvelope,context).map(row=>({...row,source_seed:context.source_seed,source_task_index:index,provider_cost:nullableNumber(task.cost)}));
+  });
+}

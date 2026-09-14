@@ -50,7 +50,7 @@ export function validateKeywordOverviewRequest(request, options = {}) {
   return {ok:errors.length === 0, errors, fingerprint:errors.length ? null : requestFingerprint(request)};
 }
 
-export function validateKeywordIdeasRequest(request) {
+export function validateKeywordIdeasRequest(request,options={}) {
   const errors=[];
   if(!plainObject(request))return {ok:false,errors:['REQUEST_NOT_OBJECT']};
   const allowed=new Set(['keywords','location_code','language_code','closely_variants','ignore_synonyms','include_serp_info','include_clickstream_data','limit','filters','order_by','tag']);
@@ -58,11 +58,27 @@ export function validateKeywordIdeasRequest(request) {
   if(!Array.isArray(request.keywords)||request.keywords.length<1||request.keywords.length>6||request.keywords.some(value=>typeof value!=='string'||value.trim().length<2))errors.push('SEED_KEYWORDS_INVALID');
   if(request.location_code!==2158||request.language_code!=='zh-TW')errors.push('MARKET_INVALID');
   if(request.closely_variants!==false||request.ignore_synonyms!==false||request.include_serp_info!==false||request.include_clickstream_data!==false)errors.push('PAID_OR_EXPANSIVE_OPTION');
-  if(request.limit!==60)errors.push('LIMIT_INVALID');
+  const allowedLimits=options.allowed_limits??[60];
+  if(!Array.isArray(allowedLimits)||!allowedLimits.includes(request.limit))errors.push('LIMIT_INVALID');
   if(JSON.stringify(request.filters)!==JSON.stringify([['keyword_info.search_volume','>',0]]))errors.push('FILTER_INVALID');
   if(JSON.stringify(request.order_by)!==JSON.stringify(['relevance,desc']))errors.push('ORDER_INVALID');
   if(typeof request.tag!=='string'||!/^page-autodev-ideas-[a-z0-9-]+$/.test(request.tag))errors.push('TAG_INVALID');
   return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(request)};
+}
+
+export function validateBalancedKeywordIdeasBatch(requests,{expected_seed_count=6,per_seed_limit=20}={}){
+  const errors=[];
+  if(!Array.isArray(requests)||requests.length!==expected_seed_count)return {ok:false,errors:['BALANCED_BATCH_SIZE_INVALID'],fingerprint:null};
+  const seeds=new Set();
+  requests.forEach((request,index)=>{
+    const validation=validateKeywordIdeasRequest(request,{allowed_limits:[per_seed_limit]});
+    if(!validation.ok)errors.push(...validation.errors.map(error=>`TASK_${index}:${error}`));
+    if(request?.keywords?.length!==1)errors.push(`TASK_${index}:ONE_SEED_REQUIRED`);
+    const seed=typeof request?.keywords?.[0]==='string'?request.keywords[0].trim().normalize('NFKC').toLocaleLowerCase('zh-TW'):'';
+    if(!seed||seeds.has(seed))errors.push(`TASK_${index}:SEED_DUPLICATE_OR_INVALID`);else seeds.add(seed);
+    if(request?.tag!==`page-autodev-ideas-seed-${index+1}`)errors.push(`TASK_${index}:TAG_ORDER_INVALID`);
+  });
+  return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(requests)};
 }
 
 export function authorizeEstimatedCost(estimatedMicrousd, options = {}) {

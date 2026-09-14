@@ -21,7 +21,12 @@ export function validateProviderRegistry(registry, options = {}) {
   return {ok:errors.length === 0, errors};
 }
 
-export function estimateKeywordIdeasMicrousd(registry,limit){if(limit!==60)throw new Error('IDEAS_LIMIT_INVALID');return (registry.price_snapshot.keyword_ideas_task_microusd??registry.price_snapshot.keyword_overview_task_microusd)+limit*(registry.price_snapshot.keyword_ideas_item_microusd??registry.price_snapshot.keyword_overview_item_microusd);}
+export function estimateKeywordIdeasMicrousd(registry,limit){if(![20,60].includes(limit))throw new Error('IDEAS_LIMIT_INVALID');return (registry.price_snapshot.keyword_ideas_task_microusd??registry.price_snapshot.keyword_overview_task_microusd)+limit*(registry.price_snapshot.keyword_ideas_item_microusd??registry.price_snapshot.keyword_overview_item_microusd);}
+
+export function estimateBalancedKeywordIdeasMicrousd(registry,requests){
+  if(!Array.isArray(requests)||requests.length!==6)throw new Error('BALANCED_BATCH_INVALID');
+  return requests.reduce((sum,request)=>sum+estimateKeywordIdeasMicrousd(registry,request?.limit),0);
+}
 
 export function estimateKeywordOverviewMicrousd(registry, keywordCount) {
   if (!Number.isSafeInteger(keywordCount) || keywordCount < 1 || keywordCount > 60) throw new Error('KEYWORD_COUNT_INVALID');
