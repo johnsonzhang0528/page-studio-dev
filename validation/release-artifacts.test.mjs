@@ -23,6 +23,7 @@ assert.match(onceService,/^ExecStart=%h\/page-studio-dev\/bin\/page-autodev run 
 for(const unit of [service,onceService]) assert.match(unit,/^ExecStartPre=%h\/page-studio-dev\/bin\/page-autodev-controlled-preflight\.mjs$/m);
 assert.match(controlledPreflight,/billing_reservation_credential/);
 assert.match(controlledPreflight,/billing-gateway\.sock/);
+assert.match(controlledPreflight,/R_OK\|fs\.constants\.W_OK/,'preflight must verify the service identity can use the gateway socket');
 assert.doesNotMatch(controlledPreflight,/readFile|OPENAI_API_KEY|console\.log\(credential/,'preflight must inspect metadata only and never read or print credential contents');
 assert.doesNotMatch(launcher,/\(activate-canary\|start\|resume\|resume-once\|run/,'launch request must not hold the worker project lock');
 assert.match(controller,/systemctl',\['--user','start','--wait',unit\]/,'interactive launch must delegate to the credential-bearing service');

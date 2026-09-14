@@ -11,4 +11,5 @@ if(!credentialStat.isFile()||credentialStat.size<=0||credentialStat.size>16384)f
 const socket='/run/page-autodev/billing-gateway.sock';
 let socketStat;try{socketStat=fs.statSync(socket);}catch{fail('BILLING_GATEWAY_SOCKET_UNAVAILABLE');}
 if(!socketStat.isSocket())fail('BILLING_GATEWAY_SOCKET_INVALID');
+try{fs.accessSync(socket,fs.constants.R_OK|fs.constants.W_OK);}catch{fail('BILLING_GATEWAY_SOCKET_PERMISSION_DENIED');}
 process.stdout.write('CONTROLLED_LAUNCH_PREFLIGHT_OK\n');
