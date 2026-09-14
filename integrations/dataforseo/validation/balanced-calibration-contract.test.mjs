@@ -47,9 +47,15 @@ test('normalizer attributes every returned row to its exact source task',()=>{
 });
 
 test('wire dispatch sends six singleton requests and preserves ordered attribution',async()=>{
-  const calls=[],authority={issue(scope){return `assertion-${scope.request_id}`;}},client=async input=>{calls.push(input);const [{keywords}]=JSON.parse(input.body.toString('utf8'));return {status:200,body:Buffer.from(JSON.stringify({status_code:20000,tasks:[{status_code:20000,status_message:'Ok.',cost:0.0144,result:[{items:[{keyword:`${keywords[0]} 指南`}]}]}]}))};};
-  const result=await dispatchBalancedKeywordIdeas({requests,path:'/v3/dataforseo_labs/google/keyword_ideas/live',lease_id:'a'.repeat(64),request_id:'batch-1',authority,client});
-  assert.equal(calls.length,6);assert.ok(calls.every(call=>JSON.parse(call.body.toString('utf8')).length===1));assert.equal(result.envelope.tasks.length,6);assert.equal(result.actual_microusd,86400);
+  const calls=[],checkpoints=[],authority={issue(scope){return `assertion-${scope.request_id}`;}},client=async input=>{assert.equal(checkpoints.length,calls.length);calls.push(input);const [{keywords}]=JSON.parse(input.body.toString('utf8'));return {status:200,body:Buffer.from(JSON.stringify({status_code:20000,tasks:[{status_code:20000,status_message:'Ok.',cost:0.0144,result:[{items:[{keyword:`${keywords[0]} 指南`}]}]}]}))};};
+  const result=await dispatchBalancedKeywordIdeas({requests,path:'/v3/dataforseo_labs/google/keyword_ideas/live',lease_id:'a'.repeat(64),request_id:'batch-1',authority,client,on_task:async snapshot=>checkpoints.push(snapshot)});
+  assert.equal(calls.length,6);assert.ok(calls.every(call=>JSON.parse(call.body.toString('utf8')).length===1));assert.equal(result.envelope.tasks.length,6);assert.equal(result.actual_microusd,86400);assert.deepEqual(checkpoints.map(item=>item.tasks.length),[1,2,3,4,5,6]);assert.deepEqual(checkpoints.map(item=>item.actual_microusd),[14400,28800,43200,57600,72000,86400]);
+});
+
+test('checkpoint failure stops before the next paid request and reports known cost',async()=>{
+  let calls=0;const authority={issue(){return 'assertion';}},client=async()=>{calls+=1;return {status:200,body:Buffer.from(JSON.stringify({status_code:20000,tasks:[{status_code:20000,status_message:'Ok.',cost:0.0144,result:[]}]}))};};
+  await assert.rejects(()=>dispatchBalancedKeywordIdeas({requests,path:'/v3/dataforseo_labs/google/keyword_ideas/live',lease_id:'a'.repeat(64),request_id:'batch-checkpoint',authority,client,on_task:async()=>{throw new Error('disk full');}}),error=>error.code==='CHECKPOINT_WRITE_FAILED'&&error.known_microusd===14400);
+  assert.equal(calls,1);
 });
 
 test('definitive provider rejection stops later spend and reports known cost',async()=>{

@@ -4,7 +4,7 @@ import {validateBalancedKeywordIdeasBatch} from './dataforseo-contract.mjs';
 const microusd=value=>Math.round(Number(value??0)*1_000_000);
 const fail=(code,evidence,known_microusd)=>Object.assign(new Error(code),{code,provider_evidence:evidence,known_microusd});
 
-export async function dispatchBalancedKeywordIdeas({requests,path,lease_id,request_id,authority,client}={}){
+export async function dispatchBalancedKeywordIdeas({requests,path,lease_id,request_id,authority,client,on_task}={}){
   const validation=validateBalancedKeywordIdeasBatch(requests);
   if(!validation.ok)throw fail(`BALANCED_CONTRACT:${validation.errors.join(',')}`,[],0);
   if(typeof client!=='function'||typeof authority?.issue!=='function')throw fail('DISPATCH_DEPENDENCY_INVALID',[],0);
@@ -21,6 +21,11 @@ export async function dispatchBalancedKeywordIdeas({requests,path,lease_id,reque
     evidence.push({index,source_status_code:envelope.status_code??null,task_status_code:task?.status_code??null,task_status_message:String(task?.status_message??'').slice(0,160),cost_microusd:taskCost});
     if(envelope.status_code!==20000||!task||task.status_code!==20000)throw fail(`PROVIDER_TASK_${task?.status_code??envelope.status_code??'UNKNOWN'}`,evidence,known_microusd);
     tasks.push(task);
+    if(on_task!==undefined){
+      if(typeof on_task!=='function')throw fail('CHECKPOINT_HANDLER_INVALID',evidence,known_microusd);
+      try{await on_task({tasks:structuredClone(tasks),evidence:structuredClone(evidence),actual_microusd:known_microusd});}
+      catch{throw fail('CHECKPOINT_WRITE_FAILED',evidence,known_microusd);}
+    }
   }
   return Object.freeze({envelope:{version:'balanced-single-task-v1',status_code:20000,status_message:'Ok.',tasks},actual_microusd:known_microusd,evidence});
 }
