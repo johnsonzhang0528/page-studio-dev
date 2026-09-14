@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildSeedDiscoveryPlan} from '../lib/query-candidate-builder.mjs';
-import {balanceDiscoveryRows,canonicalKeyword} from '../lib/discovery-quality.mjs';
+import {balanceDiscoveryRows,canonicalKeyword,keywordDedupeKey} from '../lib/discovery-quality.mjs';
 
 const seeds=['網站架設','SEO','記帳軟體','空氣清淨機','日本自由行','英文學習'];
 const profiles=Object.fromEntries(seeds.map(seed=>[seed,{include_terms:[seed]}]));
@@ -18,6 +18,29 @@ test('discovery plan isolates every seed with an equal bounded request',()=>{
 test('canonicalization merges spacing, width and case variants',()=>{
   assert.equal(canonicalKeyword(' SEO  網 站 優化 '),'seo 網站優化');
   assert.equal(canonicalKeyword('ＳＥＯ'),'seo');
+  assert.equal(keywordDedupeKey('記帳軟體 PTT'),keywordDedupeKey('記帳軟體ptt'));
+});
+
+test('permanent policy excludes stale years and piracy terms',()=>{
+  const rows=[
+    {source_seed:'日本自由行',query:'2023 日本自由行',volume:10,kd:20,intent:'commercial'},
+    {source_seed:'記帳軟體',query:'會計軟體破解版',volume:10,kd:20,intent:'transactional'},
+    ...seeds.flatMap(seed=>Array.from({length:5},(_,index)=>({source_seed:seed,query:`${seed} 合法主題 ${index}`,volume:10,kd:20,intent:'informational'})))
+  ];
+  const result=balanceDiscoveryRows(rows,{seeds,profiles,current_year:2026,maximum_contamination_ratio:1});
+  assert.equal(result.metrics.stale_year_rows,1);assert.equal(result.metrics.policy_blocked_rows,1);
+});
+
+test('brand concentration is capped and missing KD receives explicit SERP review',()=>{
+  const localProfiles={...profiles,'空氣清淨機':{include_terms:['空氣清淨機'],brand_terms:['dyson'],maximum_brand_ratio:0.2}};
+  const rows=seeds.flatMap(seed=>Array.from({length:5},(_,index)=>({source_seed:seed,query:`${seed} ${index}`,volume:100-index,kd:index===0?null:20,intent:'informational'})));
+  rows.push(...Array.from({length:5},(_,index)=>({source_seed:'空氣清淨機',query:`dyson 空氣清淨機 ${index}`,volume:1000-index,kd:0,intent:'transactional'})));
+  const result=balanceDiscoveryRows(rows,{seeds,profiles:localProfiles,per_seed_quota:5,minimum_per_seed:5});
+  assert.equal(result.per_seed['空氣清淨機'].brand_selected,1);
+  assert.equal(result.per_seed['空氣清淨機'].brand_limited,4);
+  assert.equal(result.metrics.serp_review_required_rows,6);
+  assert.equal(result.metrics.uncertain_rows,0);assert.equal(result.metrics.manual_review_rows,4);
+  assert.deepEqual(result.required_fallbacks,['SERP_COMPETITION_ANALYSIS']);
 });
 
 test('balanced selection prevents one seed from starving the others',()=>{
@@ -48,6 +71,7 @@ test('unknown semantic relationship is held for review rather than silently acce
   const result=balanceDiscoveryRows(rows,{seeds,profiles});
   assert.equal(result.decision,'READY_WITH_MANUAL_REVIEW');
   assert.equal(result.manual_review.some(row=>row.query==='排名成長方法'),true);
+  assert.equal(result.metrics.uncertain_rows,1);
 });
 
 test('missing seed quota blocks scoring even when total row count is high',()=>{

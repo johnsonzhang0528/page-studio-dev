@@ -56,7 +56,7 @@ try{
   const quality=balanceDiscoveryRows(discoveryRows,{seeds,profiles,per_seed_quota:10,minimum_per_seed:5});
   const rows=quality.selected.map(({canonical_query,quality_class,quality_reason,...row})=>row);
   const report=quality.ok&&rows.length===60?buildCalibrationReport(rows):{ok:false,decision:'HOLD_FOR_DISCOVERY_REPAIR',errors:[...quality.errors,...(rows.length===60?[]:['ROW_COUNT_EXPECTED:60'])],metrics:quality.metrics};
-  const artifact={schema_version:2,approval_id:approval.approval_id,request_plan_sha256,retrieved_at,provider:'dataforseo',actual_microusd,lease_id:lease.lease_id,quality,report,rows};
+  const artifact={schema_version:3,approval_id:approval.approval_id,request_plan_sha256,retrieved_at,provider:'dataforseo',actual_microusd,lease_id:lease.lease_id,raw_provider_envelope:envelope,quality,report,rows};
   fs.mkdirSync('/var/lib/page-autodev/dataforseo',{recursive:true});fs.writeFileSync('/var/lib/page-autodev/dataforseo/calibration-60-v2.json',`${JSON.stringify(artifact,null,2)}\n`,{mode:0o600});
   fs.unlinkSync(checkpointFile);
   console.log(JSON.stringify({ok:quality.ok&&report.ok,actual_microusd,lease_id:lease.lease_id,quality:quality.metrics,report:artifact.report}));
