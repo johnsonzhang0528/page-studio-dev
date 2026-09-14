@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../lib/autodev.mjs',import.meta.url),'utf8');
 assert.match(source,/const providerDenied=batch\.find\(item=>item\.result\.provider_dispatch_denied\)/,'parallel provider denial must have a dedicated recovery path');
 assert.match(source,/for\(const item of batch\)if\(item\.unit\.status==='running'\).*item\.unit\.status='pending'/s,'parallel provider denial must restore the whole batch to pending');
-assert.match(source,/for\(const candidate of plan\?\.units\?\?\[\]\)if\(candidate\.status==='running'\)/,'operator resume must recover orphan running units from a terminal controller state');
+assert.match(source,/for\(const candidate of plan\?\.units\?\?\[\]\)\{\s*if\(candidate\.status==='running'\)/,'operator resume must recover orphan running units from a terminal controller state');
 assert.match(source,/【孤立工作單元復原】/);
 assert.match(source,/candidate\.status==='pending'.*candidate\.session_id\|\|candidate\.started_at/s,'state recovery must remove stale execution metadata from pending units');
 assert.match(source,/s\.next_action='執行 page-autodev resume 續接下一個待執行工作單元'/,'recovered state must not retain the obsolete blocker action');
