@@ -18,6 +18,7 @@ try{
   const controllerAuthority=createBillingGatewayCredentialAuthority({secret:gatewaySecret,clock:()=>now}),request_sha256=billingGatewayRequestDigest(spec),reserveCredential=controllerAuthority.issueControllerCredential(),request=(route,input)=>runtime.handler({method:'POST',path:route,content_type:'application/json',body:Buffer.from(JSON.stringify(input))});
   const admission=await request('/v1/reserve',{credential:reserveCredential,spec,work_unit_budget_id:'unit',priority:'P2',canary_wave:'wave'});assert.equal(admission.reservation.status,'ACTIVE');
   const result=await request('/v1/dispatch',{credential:admission.credential,spec,spend_lease_id:admission.reservation.lease_id});assert.equal(result.outcome,'success');assert.deepEqual(result.structured_output,{outcome:'pass'});assert.equal(egress.length,1);assert.equal(runtime.outbox.snapshot().records.inv.status,'RESULT_STAGED');
+  const billingSnapshot=runtime.firewall.snapshot();assert.equal(Object.keys(billingSnapshot.reservations).length,0);assert.equal(billingSnapshot.committed.at(-1).provider_request_id,'provider-1');assert.equal(billingSnapshot.committed.at(-1).settlement_outcome,'FINAL_USAGE');assert.equal(billingSnapshot.committed.at(-1).cost_microusd,5);
   await assert.rejects(request('/v1/dispatch',{credential:admission.credential,spec,spend_lease_id:admission.reservation.lease_id}),error=>error.code==='BILLING_GATEWAY_CREDENTIAL_DENIED');assert.equal(egress.length,1);
 }finally{fs.rmSync(root,{recursive:true,force:true});}
 console.log('BILLING_GATEWAY_RUNTIME_TESTS_OK');
