@@ -52,6 +52,7 @@ assert.match(refreshService,/^ExecStart=\/usr\/bin\/node \/opt\/page-autodev\/bi
 assert.match(refreshService,/^LoadCredential=gateway_credential_secret:\/etc\/page-autodev\/credentials\/gateway-credential-secret$/m);
 assert.match(refreshService,/^Environment=CONTROLLER_CREDENTIAL_OUTPUT=\/etc\/page-autodev\/credentials\/billing-reservation-credential$/m);
 assert.match(refreshService,/^Group=page-autodev-workers$/m);assert.match(refreshService,/^Environment=CONTROLLER_CREDENTIAL_OUTPUT_MODE=0640$/m);
+assert.match(refreshService,/^UMask=0027$/m,'refresh must preserve worker-group read access while denying all access to others');
 assert.match(refreshService,/^PrivateNetwork=true$/m);assert.match(refreshService,/^ProtectSystem=strict$/m);assert.match(refreshService,/^ReadWritePaths=\/etc\/page-autodev\/credentials$/m);
 assert.match(refreshTimer,/^OnUnitActiveSec=12h$/m);assert.match(refreshTimer,/^Persistent=true$/m);assert.match(refreshTimer,/^WantedBy=timers\.target$/m);
 console.log('BILLING_SYSTEMD_ARTIFACT_TESTS_OK');
