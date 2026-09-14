@@ -1,39 +1,626 @@
-import assert from 'node:assert/strict';
-import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {createInvocationSpec} from '../lib/provider-contract.mjs';
-import {createPriceRegistry} from '../lib/price-registry.mjs';
-import {calculateWorstCaseReservation,createBillingFirewall,recoverBillingFirewall} from '../lib/billing-firewall.mjs';
-import {signBudgetGrant} from '../lib/billing-grant.mjs';
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { createInvocationSpec } from "../lib/provider-contract.mjs";
+import { createPriceRegistry } from "../lib/price-registry.mjs";
+import {
+  calculateWorstCaseReservation,
+  createBillingFirewall,
+  recoverBillingFirewall,
+} from "../lib/billing-firewall.mjs";
+import { signBudgetGrant } from "../lib/billing-grant.mjs";
 
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'billing-firewall-')),now=Date.parse('2026-09-08T01:00:00Z');
-const prices=createPriceRegistry({version:1,effective_at:'2026-09-08T00:00:00Z',expires_at:'2026-09-09T00:00:00Z',source:'offline-fixture',models:[{provider:'openai',model:'offline-luna-fixture',uncached_input_microusd_per_million:1_000_000,cached_input_microusd_per_million:100_000,output_microusd_per_million:2_000_000,reasoning_microusd_per_million:3_000_000,provider_fixed_fees_microusd:1}]});
-const base={schema_version:1,invocation_id:'inv-1',run_id:'run-1',project:'fixture',phase:'requirements',unit_id:'REQ-1',attempt:1,input_revision:1,controller_sha:'controller',policy_fingerprint:'policy',objective:'fixture',context_manifest:{sha256:'context'},allowed_write_scope:[],tool_capabilities:['filesystem_read'],network_policy:'billing_gateway_only',timeouts:{connect_ms:20,first_token_ms:20,idle_ms:20,tool_ms:20,invocation_deadline_ms:1000,work_unit_deadline_ms:2000},budget:{max_input_tokens:10,max_output_tokens:10,max_reasoning_tokens:10,max_tool_calls:1,max_api_round_trips:1,max_wall_ms:1000,max_cost_microusd:100},output_schema:{type:'object'},receipt_schema:{type:'object'},risk_tier:'low',required_quality_tier:'standard',verification_mode:'read_only',provider:'openai',model:'offline-luna-fixture',reason_code:'FIXTURE',fallback_policy:[],idempotency_key:'idem-1',parent_checkpoint:'checkpoint'};
-const spec=createInvocationSpec(base),policy={uncertainty_percent:20,work_unit_default:150,project:{fixture:{minute:200,fifteen_minutes:300,hour:400,day:500,month:600}},account:{minute:250,fifteen_minutes:350,hour:450,day:550,month:650},canary:{wave1:175}};
-assert.equal(calculateWorstCaseReservation(spec,prices.resolve('openai','offline-luna-fixture',new Date(now)).entry,{uncertainty_percent:20,fixed_fees_microusd:1}),74,'worst-case 必須逐類向上取整並加 20% buffer');
-const firewall=createBillingFirewall({root,priceRegistry:prices,policy,clock:()=>now}),lease=firewall.reserve(spec,{work_unit_budget_id:'wu-1',canary_wave:'wave1'});assert.equal(lease.reserved_microusd,74);assert.equal(firewall.snapshot().reservations[lease.lease_id].status,'ACTIVE');
-const unknownRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-unknown-project-')),unknownSpec=createInvocationSpec({...base,project:'unknown',invocation_id:'inv-unknown',idempotency_key:'idem-unknown'});assert.throws(()=>createBillingFirewall({root:unknownRoot,priceRegistry:prices,policy,clock:()=>now}).reserve(unknownSpec,{work_unit_budget_id:'wu-unknown',canary_wave:'wave1'}),error=>error.code==='BILLING_PROJECT_POLICY_MISSING');fs.rmSync(unknownRoot,{recursive:true,force:true});
-const dispatch=firewall.authorizeDispatch(lease.lease_id,spec);assert.equal(dispatch.reserved_microusd,74);assert.ok(dispatch.dispatch_token);assert.throws(()=>firewall.authorizeDispatch(lease.lease_id,spec),error=>error.code==='BILLING_DISPATCH_DENIED','spend lease 只能產生一次 dispatch authorization');
-assert.deepEqual(firewall.updateProvisional(lease.lease_id,{sequence:1,provisional_microusd:59}),{allow_new_tools:true,allow_context_growth:true,cancel_required:false,reconciliation_required:false});
-assert.equal(firewall.updateProvisional(lease.lease_id,{sequence:2,provisional_microusd:60}).allow_new_tools,false,'80% 後不可開新工具回合');
-assert.equal(firewall.updateProvisional(lease.lease_id,{sequence:3,provisional_microusd:71}).allow_context_growth,false,'95% 後不可擴張上下文');
-assert.throws(()=>firewall.updateProvisional(lease.lease_id,{sequence:4,provisional_microusd:70}),error=>error.code==='BILLING_USAGE_INVALID','usage 不得倒退');
-assert.throws(()=>firewall.reserve(spec,{work_unit_budget_id:'wu-1',canary_wave:'wave1'}),error=>error.code==='BILLING_IDENTITY_CONFLICT');
-assert.throws(()=>firewall.settle(lease.lease_id,{provider_request_id:'req-1',final_cost_microusd:30}),error=>error.code==='BILLING_RECONCILIATION_REQUIRED');assert.ok(firewall.snapshot().reservations[lease.lease_id],'未知結果不可釋放 reservation');
-assert.deepEqual(firewall.settle(lease.lease_id,{provider_request_id:'req-1',final_cost_microusd:30,outcome_proven:true}),{settled:true,released_microusd:44,global_hold:null});assert.equal(firewall.snapshot().committed[0].cost_microusd,30);
-assert.throws(()=>firewall.reserve(spec,{work_unit_budget_id:'wu-replay',canary_wave:'wave1'}),error=>error.code==='BILLING_IDENTITY_CONFLICT','已結算 identity 也不可重新預留');
-if(process.platform!=='win32')fs.chmodSync(path.join(root,'billing-state.json'),0o640);const second=createInvocationSpec({...base,invocation_id:'inv-2',idempotency_key:'idem-2'}),lease2=firewall.reserve(second,{work_unit_budget_id:'wu-1',canary_wave:'wave1'});assert.equal(lease2.reserved_microusd,74);if(process.platform!=='win32')assert.equal(fs.statSync(path.join(root,'billing-state.json')).mode&0o777,0o640,'原子替換必須保存既有 state mode');
-assert.deepEqual(firewall.markUnknownOutcome(lease2.lease_id,{reason:'timeout'}),{retained_microusd:74,status:'RECONCILIATION_REQUIRED'});assert.equal(firewall.snapshot().reservations[lease2.lease_id].reserved_microusd,74,'取消或 timeout 後不得自動退款');
-assert.throws(()=>firewall.settle(lease2.lease_id,{provider_request_id:'req-1',final_cost_microusd:10,outcome_proven:true}),error=>error.code==='BILLING_RECONCILIATION_REQUIRED','provider request ID 不可跨 lease 重複結算');
-const third=createInvocationSpec({...base,invocation_id:'inv-3',idempotency_key:'idem-3'});assert.throws(()=>firewall.reserve(third,{work_unit_budget_id:'wu-1',canary_wave:'wave1'}),error=>error.code==='BILLING_HARD_CAP','work-unit exposure 不得因 retry/fallback 重置');
-firewall.hold('burn-rate');assert.throws(()=>firewall.reserve(createInvocationSpec({...base,invocation_id:'inv-4',idempotency_key:'idem-4'}),{work_unit_budget_id:'wu-2',canary_wave:'wave1'}),error=>error.code==='GLOBAL_BILLING_HOLD');
-const stale=createBillingFirewall({root:fs.mkdtempSync(path.join(os.tmpdir(),'billing-stale-')),priceRegistry:prices,policy,clock:()=>Date.parse('2026-09-10T00:00:00Z')});assert.throws(()=>stale.reserve(spec,{work_unit_budget_id:'wu-1',canary_wave:'wave1'}),error=>error.code==='PRICE_REGISTRY_STALE');
-const exhaustedRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-exhausted-')),exhausted=createBillingFirewall({root:exhaustedRoot,priceRegistry:prices,policy,clock:()=>now}),exhaustedLease=exhausted.reserve(spec,{work_unit_budget_id:'wu-exhausted',canary_wave:'wave1'});assert.equal(exhausted.updateProvisional(exhaustedLease.lease_id,{sequence:1,provisional_microusd:74}).cancel_required,true);assert.equal(exhausted.snapshot().global_hold.reason,'RESERVATION_EXHAUSTED');assert.ok(exhausted.snapshot().reservations[exhaustedLease.lease_id],'100% 熔斷仍須保留 exposure 等待對帳');assert.throws(()=>exhausted.releaseConsecutiveNoProgressHold({evidence_sha256:'b'.repeat(64),operator_reason:'attempt to bypass exhausted reservation'}),error=>error.code==='BILLING_HOLD_RELEASE_DENIED','其他 hold 類型與未結 reservation 不得由 no-progress 流程解除');
-const crypto=(await import('node:crypto')).default,{publicKey,privateKey}=crypto.generateKeyPairSync('ed25519'),grantRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-grant-')),grantFirewall=createBillingFirewall({root:grantRoot,priceRegistry:prices,policy:{...policy,work_unit_default:50},grantPublicKey:publicKey,clock:()=>now}),grantSpec=createInvocationSpec({...base,invocation_id:'inv-grant',idempotency_key:'idem-grant'}),grant=signBudgetGrant({grant_id:'grant-1',issued_at:'2026-09-08T00:00:00Z',expires_at:'2026-09-08T02:00:00Z',project:'fixture',work_unit_budget_id:'wu-grant',priority:'P0',max_microusd:30,reason:'operator-approved incident work',nonce:'nonce-1'},privateKey),grantLease=grantFirewall.reserve(grantSpec,{work_unit_budget_id:'wu-grant',canary_wave:'wave1',priority:'P0',budget_grant:grant});assert.equal(grantLease.grant_id,'grant-1');assert.throws(()=>grantFirewall.reserve(createInvocationSpec({...base,invocation_id:'inv-grant-2',idempotency_key:'idem-grant-2'}),{work_unit_budget_id:'wu-grant',canary_wave:'wave1',priority:'P0',budget_grant:grant}),error=>error.code==='BILLING_GRANT_INVALID','signed grant 不得重播');
-const tampered={...grant,max_microusd:1_000_000};assert.throws(()=>createBillingFirewall({root:fs.mkdtempSync(path.join(os.tmpdir(),'billing-tamper-')),priceRegistry:prices,policy:{...policy,work_unit_default:50},grantPublicKey:publicKey,clock:()=>now}).reserve(grantSpec,{work_unit_budget_id:'wu-grant',canary_wave:'wave1',priority:'P0',budget_grant:tampered}),error=>error.code==='BILLING_GRANT_INVALID','prompt 或模型不得竄改 signed grant');
-const priorityPolicy=month=>({...policy,account:{...policy.account,month}}),priorityRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-priority-'));assert.throws(()=>createBillingFirewall({root:priorityRoot,priceRegistry:prices,policy:priorityPolicy(80),clock:()=>now}).reserve(createInvocationSpec({...base,invocation_id:'inv-priority',idempotency_key:'idem-priority'}),{work_unit_budget_id:'wu-priority',canary_wave:'wave1',priority:'P2'}),error=>error.code==='BILLING_PRIORITY_HOLD','月額度達 90% 後停止非 P0/P1');
-const warningRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-warning-')),warningLease=createBillingFirewall({root:warningRoot,priceRegistry:prices,policy:priorityPolicy(90),clock:()=>now}).reserve(createInvocationSpec({...base,invocation_id:'inv-warning',idempotency_key:'idem-warning'}),{work_unit_budget_id:'wu-warning',canary_wave:'wave1',priority:'P1'});assert.equal(warningLease.budget_warning,'ACCOUNT_MONTH_80_PERCENT');
-const hardRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-hard-'));assert.throws(()=>createBillingFirewall({root:hardRoot,priceRegistry:prices,policy:priorityPolicy(74),clock:()=>now}).reserve(createInvocationSpec({...base,invocation_id:'inv-hard',idempotency_key:'idem-hard'}),{work_unit_budget_id:'wu-hard',canary_wave:'wave1',priority:'P0'}),error=>error.code==='BILLING_HARD_CAP','P0 也不能突破 account monthly hard cap');
-const progressRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-progress-')),progressFirewall=createBillingFirewall({root:progressRoot,priceRegistry:prices,policy,clock:()=>now});for(let index=1;index<=2;index+=1){const progressSpec=createInvocationSpec({...base,invocation_id:`inv-no-progress-${index}`,idempotency_key:`idem-no-progress-${index}`}),progressLease=progressFirewall.reserve(progressSpec,{work_unit_budget_id:`wu-no-progress-${index}`,canary_wave:'wave1'}),settled=progressFirewall.settle(progressLease.lease_id,{provider_request_id:`req-no-progress-${index}`,final_cost_microusd:1,outcome_proven:true});if(index===2)assert.equal(settled.global_hold,'CONSECUTIVE_NO_PROGRESS');}assert.throws(()=>progressFirewall.reserve(createInvocationSpec({...base,invocation_id:'inv-after-no-progress',idempotency_key:'idem-after-no-progress'}),{work_unit_budget_id:'wu-after',canary_wave:'wave1'}),error=>error.code==='GLOBAL_BILLING_HOLD');assert.throws(()=>progressFirewall.releaseConsecutiveNoProgressHold({evidence_sha256:'bad',operator_reason:'verified tunnel repair'}),error=>error.code==='BILLING_HOLD_RELEASE_DENIED','無效證據不得解除 hold');const holdRelease=progressFirewall.releaseConsecutiveNoProgressHold({evidence_sha256:'b'.repeat(64),operator_reason:'verified tunnel repair and zero-cost reconciliation'});assert.equal(holdRelease.hold.reason,'CONSECUTIVE_NO_PROGRESS');assert.equal(progressFirewall.snapshot().global_hold,null);assert.equal(progressFirewall.snapshot().no_progress_streak,0);assert.equal(progressFirewall.snapshot().hold_releases[0].evidence_sha256,'b'.repeat(64));assert.equal(progressFirewall.reserve(createInvocationSpec({...base,invocation_id:'inv-after-release',idempotency_key:'idem-after-release'}),{work_unit_budget_id:'wu-after',canary_wave:'wave1'}).status,'ACTIVE');
-const proofRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-proof-')),proofFirewall=createBillingFirewall({root:proofRoot,priceRegistry:prices,policy,clock:()=>now}),proofSpec=createInvocationSpec({...base,invocation_id:'inv-proof',idempotency_key:'idem-proof'}),proofLease=proofFirewall.reserve(proofSpec,{work_unit_budget_id:'wu-proof',canary_wave:'wave1'});assert.equal(proofFirewall.settle(proofLease.lease_id,{provider_request_id:'req-proof',final_cost_microusd:1,outcome_proven:true,progress_proof:{kind:'artifact',sha256:'a'.repeat(64),verified:true}}).global_hold,null);assert.equal(proofFirewall.snapshot().no_progress_streak,0);
-const crashRoot=fs.mkdtempSync(path.join(os.tmpdir(),'billing-recovery-')),next={schema_version:1,generation:1,last_wall_time_ms:now,no_progress_streak:0,global_hold:{reason:'crash',held_at_ms:now},reservations:{},committed:[],used_grants:{}},intent={schema_version:1,previous_generation:0,next_generation:1,operation:'hold',next_state:next},stable=value=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])):value;intent.next_state_sha256=crypto.createHash('sha256').update(JSON.stringify(stable(next))).digest('hex');fs.writeFileSync(path.join(crashRoot,'billing-state.intent.json'),JSON.stringify(intent));assert.equal(recoverBillingFirewall(crashRoot).recovered,true);assert.equal(createBillingFirewall({root:crashRoot,priceRegistry:prices,policy,clock:()=>now}).snapshot().global_hold.reason,'crash');
-for(const directory of [root,crashRoot,exhaustedRoot,grantRoot,priorityRoot,warningRoot,hardRoot,progressRoot,proofRoot])fs.rmSync(directory,{recursive:true,force:true});console.log('BILLING_FIREWALL_TESTS_OK');
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "billing-firewall-")),
+  now = Date.parse("2026-09-08T01:00:00Z");
+const prices = createPriceRegistry({
+  version: 1,
+  effective_at: "2026-09-08T00:00:00Z",
+  expires_at: "2026-09-09T00:00:00Z",
+  source: "offline-fixture",
+  models: [
+    {
+      provider: "openai",
+      model: "offline-luna-fixture",
+      uncached_input_microusd_per_million: 1_000_000,
+      cached_input_microusd_per_million: 100_000,
+      output_microusd_per_million: 2_000_000,
+      reasoning_microusd_per_million: 3_000_000,
+      provider_fixed_fees_microusd: 1,
+    },
+  ],
+});
+const base = {
+  schema_version: 1,
+  invocation_id: "inv-1",
+  run_id: "run-1",
+  project: "fixture",
+  phase: "requirements",
+  unit_id: "REQ-1",
+  attempt: 1,
+  input_revision: 1,
+  controller_sha: "controller",
+  policy_fingerprint: "policy",
+  objective: "fixture",
+  context_manifest: { sha256: "context" },
+  allowed_write_scope: [],
+  tool_capabilities: ["filesystem_read"],
+  network_policy: "billing_gateway_only",
+  timeouts: {
+    connect_ms: 20,
+    first_token_ms: 20,
+    idle_ms: 20,
+    tool_ms: 20,
+    invocation_deadline_ms: 1000,
+    work_unit_deadline_ms: 2000,
+  },
+  budget: {
+    max_input_tokens: 10,
+    max_output_tokens: 10,
+    max_reasoning_tokens: 10,
+    max_tool_calls: 1,
+    max_api_round_trips: 1,
+    max_wall_ms: 1000,
+    max_cost_microusd: 100,
+  },
+  output_schema: { type: "object" },
+  receipt_schema: { type: "object" },
+  risk_tier: "low",
+  required_quality_tier: "standard",
+  verification_mode: "read_only",
+  provider: "openai",
+  model: "offline-luna-fixture",
+  reason_code: "FIXTURE",
+  fallback_policy: [],
+  idempotency_key: "idem-1",
+  parent_checkpoint: "checkpoint",
+};
+const spec = createInvocationSpec(base),
+  policy = {
+    uncertainty_percent: 20,
+    work_unit_default: 150,
+    project: {
+      fixture: {
+        minute: 200,
+        fifteen_minutes: 300,
+        hour: 400,
+        day: 500,
+        month: 600,
+      },
+    },
+    account: {
+      minute: 250,
+      fifteen_minutes: 350,
+      hour: 450,
+      day: 550,
+      month: 650,
+    },
+    canary: { wave1: 175 },
+  };
+assert.equal(
+  calculateWorstCaseReservation(
+    spec,
+    prices.resolve("openai", "offline-luna-fixture", new Date(now)).entry,
+    { uncertainty_percent: 20, fixed_fees_microusd: 1 },
+  ),
+  74,
+  "worst-case 必須逐類向上取整並加 20% buffer",
+);
+const firewall = createBillingFirewall({
+    root,
+    priceRegistry: prices,
+    policy,
+    clock: () => now,
+  }),
+  lease = firewall.reserve(spec, {
+    work_unit_budget_id: "wu-1",
+    canary_wave: "wave1",
+  });
+assert.equal(lease.reserved_microusd, 74);
+assert.equal(firewall.snapshot().reservations[lease.lease_id].status, "ACTIVE");
+const unknownRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "billing-unknown-project-"),
+  ),
+  unknownSpec = createInvocationSpec({
+    ...base,
+    project: "unknown",
+    invocation_id: "inv-unknown",
+    idempotency_key: "idem-unknown",
+  });
+assert.throws(
+  () =>
+    createBillingFirewall({
+      root: unknownRoot,
+      priceRegistry: prices,
+      policy,
+      clock: () => now,
+    }).reserve(unknownSpec, {
+      work_unit_budget_id: "wu-unknown",
+      canary_wave: "wave1",
+    }),
+  (error) => error.code === "BILLING_PROJECT_POLICY_MISSING",
+);
+fs.rmSync(unknownRoot, { recursive: true, force: true });
+const dispatch = firewall.authorizeDispatch(lease.lease_id, spec);
+assert.equal(dispatch.reserved_microusd, 74);
+assert.ok(dispatch.dispatch_token);
+assert.throws(
+  () => firewall.authorizeDispatch(lease.lease_id, spec),
+  (error) => error.code === "BILLING_DISPATCH_DENIED",
+  "spend lease 只能產生一次 dispatch authorization",
+);
+assert.deepEqual(
+  firewall.updateProvisional(lease.lease_id, {
+    sequence: 1,
+    provisional_microusd: 59,
+  }),
+  {
+    allow_new_tools: true,
+    allow_context_growth: true,
+    cancel_required: false,
+    reconciliation_required: false,
+  },
+);
+assert.equal(
+  firewall.updateProvisional(lease.lease_id, {
+    sequence: 2,
+    provisional_microusd: 60,
+  }).allow_new_tools,
+  false,
+  "80% 後不可開新工具回合",
+);
+assert.equal(
+  firewall.updateProvisional(lease.lease_id, {
+    sequence: 3,
+    provisional_microusd: 71,
+  }).allow_context_growth,
+  false,
+  "95% 後不可擴張上下文",
+);
+assert.throws(
+  () =>
+    firewall.updateProvisional(lease.lease_id, {
+      sequence: 4,
+      provisional_microusd: 70,
+    }),
+  (error) => error.code === "BILLING_USAGE_INVALID",
+  "usage 不得倒退",
+);
+assert.throws(
+  () =>
+    firewall.reserve(spec, {
+      work_unit_budget_id: "wu-1",
+      canary_wave: "wave1",
+    }),
+  (error) => error.code === "BILLING_IDENTITY_CONFLICT",
+);
+assert.throws(
+  () =>
+    firewall.settle(lease.lease_id, {
+      provider_request_id: "req-1",
+      final_cost_microusd: 30,
+    }),
+  (error) => error.code === "BILLING_RECONCILIATION_REQUIRED",
+);
+assert.ok(
+  firewall.snapshot().reservations[lease.lease_id],
+  "未知結果不可釋放 reservation",
+);
+assert.deepEqual(
+  firewall.settle(lease.lease_id, {
+    provider_request_id: "req-1",
+    final_cost_microusd: 30,
+    outcome_proven: true,
+  }),
+  { settled: true, released_microusd: 44, global_hold: null },
+);
+assert.equal(firewall.snapshot().committed[0].cost_microusd, 30);
+assert.throws(
+  () =>
+    firewall.reserve(spec, {
+      work_unit_budget_id: "wu-replay",
+      canary_wave: "wave1",
+    }),
+  (error) => error.code === "BILLING_IDENTITY_CONFLICT",
+  "已結算 identity 也不可重新預留",
+);
+if (process.platform !== "win32")
+  fs.chmodSync(path.join(root, "billing-state.json"), 0o640);
+const second = createInvocationSpec({
+    ...base,
+    invocation_id: "inv-2",
+    idempotency_key: "idem-2",
+  }),
+  lease2 = firewall.reserve(second, {
+    work_unit_budget_id: "wu-1",
+    canary_wave: "wave1",
+  });
+assert.equal(lease2.reserved_microusd, 74);
+if (process.platform !== "win32")
+  assert.equal(
+    fs.statSync(path.join(root, "billing-state.json")).mode & 0o777,
+    0o640,
+    "原子替換必須保存既有 state mode",
+  );
+assert.deepEqual(
+  firewall.markUnknownOutcome(lease2.lease_id, { reason: "timeout" }),
+  { retained_microusd: 74, status: "RECONCILIATION_REQUIRED" },
+);
+assert.equal(
+  firewall.snapshot().reservations[lease2.lease_id].reserved_microusd,
+  74,
+  "取消或 timeout 後不得自動退款",
+);
+assert.throws(
+  () =>
+    firewall.settle(lease2.lease_id, {
+      provider_request_id: "req-1",
+      final_cost_microusd: 10,
+      outcome_proven: true,
+    }),
+  (error) => error.code === "BILLING_RECONCILIATION_REQUIRED",
+  "provider request ID 不可跨 lease 重複結算",
+);
+const third = createInvocationSpec({
+  ...base,
+  invocation_id: "inv-3",
+  idempotency_key: "idem-3",
+});
+assert.throws(
+  () =>
+    firewall.reserve(third, {
+      work_unit_budget_id: "wu-1",
+      canary_wave: "wave1",
+    }),
+  (error) => error.code === "BILLING_HARD_CAP",
+  "work-unit exposure 不得因 retry/fallback 重置",
+);
+firewall.hold("burn-rate");
+assert.throws(
+  () =>
+    firewall.reserve(
+      createInvocationSpec({
+        ...base,
+        invocation_id: "inv-4",
+        idempotency_key: "idem-4",
+      }),
+      { work_unit_budget_id: "wu-2", canary_wave: "wave1" },
+    ),
+  (error) => error.code === "GLOBAL_BILLING_HOLD",
+);
+const stale = createBillingFirewall({
+  root: fs.mkdtempSync(path.join(os.tmpdir(), "billing-stale-")),
+  priceRegistry: prices,
+  policy,
+  clock: () => Date.parse("2026-09-10T00:00:00Z"),
+});
+assert.throws(
+  () =>
+    stale.reserve(spec, { work_unit_budget_id: "wu-1", canary_wave: "wave1" }),
+  (error) => error.code === "PRICE_REGISTRY_STALE",
+);
+const exhaustedRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "billing-exhausted-"),
+  ),
+  exhausted = createBillingFirewall({
+    root: exhaustedRoot,
+    priceRegistry: prices,
+    policy,
+    clock: () => now,
+  }),
+  exhaustedLease = exhausted.reserve(spec, {
+    work_unit_budget_id: "wu-exhausted",
+    canary_wave: "wave1",
+  });
+assert.equal(
+  exhausted.updateProvisional(exhaustedLease.lease_id, {
+    sequence: 1,
+    provisional_microusd: 74,
+  }).cancel_required,
+  true,
+);
+assert.equal(exhausted.snapshot().global_hold.reason, "RESERVATION_EXHAUSTED");
+assert.ok(
+  exhausted.snapshot().reservations[exhaustedLease.lease_id],
+  "100% 熔斷仍須保留 exposure 等待對帳",
+);
+assert.throws(
+  () =>
+    exhausted.releaseConsecutiveNoProgressHold({
+      evidence_sha256: "b".repeat(64),
+      operator_reason: "attempt to bypass exhausted reservation",
+    }),
+  (error) => error.code === "BILLING_HOLD_RELEASE_DENIED",
+  "其他 hold 類型與未結 reservation 不得由 no-progress 流程解除",
+);
+const crypto = (await import("node:crypto")).default,
+  { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519"),
+  grantRoot = fs.mkdtempSync(path.join(os.tmpdir(), "billing-grant-")),
+  grantFirewall = createBillingFirewall({
+    root: grantRoot,
+    priceRegistry: prices,
+    policy: { ...policy, work_unit_default: 50 },
+    grantPublicKey: publicKey,
+    clock: () => now,
+  }),
+  grantSpec = createInvocationSpec({
+    ...base,
+    invocation_id: "inv-grant",
+    idempotency_key: "idem-grant",
+  }),
+  grant = signBudgetGrant(
+    {
+      grant_id: "grant-1",
+      issued_at: "2026-09-08T00:00:00Z",
+      expires_at: "2026-09-08T02:00:00Z",
+      project: "fixture",
+      work_unit_budget_id: "wu-grant",
+      priority: "P0",
+      max_microusd: 30,
+      reason: "operator-approved incident work",
+      nonce: "nonce-1",
+    },
+    privateKey,
+  ),
+  grantLease = grantFirewall.reserve(grantSpec, {
+    work_unit_budget_id: "wu-grant",
+    canary_wave: "wave1",
+    priority: "P0",
+    budget_grant: grant,
+  });
+assert.equal(grantLease.grant_id, "grant-1");
+assert.throws(
+  () =>
+    grantFirewall.reserve(
+      createInvocationSpec({
+        ...base,
+        invocation_id: "inv-grant-2",
+        idempotency_key: "idem-grant-2",
+      }),
+      {
+        work_unit_budget_id: "wu-grant",
+        canary_wave: "wave1",
+        priority: "P0",
+        budget_grant: grant,
+      },
+    ),
+  (error) => error.code === "BILLING_GRANT_INVALID",
+  "signed grant 不得重播",
+);
+const tampered = { ...grant, max_microusd: 1_000_000 };
+assert.throws(
+  () =>
+    createBillingFirewall({
+      root: fs.mkdtempSync(path.join(os.tmpdir(), "billing-tamper-")),
+      priceRegistry: prices,
+      policy: { ...policy, work_unit_default: 50 },
+      grantPublicKey: publicKey,
+      clock: () => now,
+    }).reserve(grantSpec, {
+      work_unit_budget_id: "wu-grant",
+      canary_wave: "wave1",
+      priority: "P0",
+      budget_grant: tampered,
+    }),
+  (error) => error.code === "BILLING_GRANT_INVALID",
+  "prompt 或模型不得竄改 signed grant",
+);
+const priorityPolicy = (month) => ({
+    ...policy,
+    account: { ...policy.account, month },
+  }),
+  priorityRoot = fs.mkdtempSync(path.join(os.tmpdir(), "billing-priority-"));
+assert.throws(
+  () =>
+    createBillingFirewall({
+      root: priorityRoot,
+      priceRegistry: prices,
+      policy: priorityPolicy(80),
+      clock: () => now,
+    }).reserve(
+      createInvocationSpec({
+        ...base,
+        invocation_id: "inv-priority",
+        idempotency_key: "idem-priority",
+      }),
+      {
+        work_unit_budget_id: "wu-priority",
+        canary_wave: "wave1",
+        priority: "P2",
+      },
+    ),
+  (error) => error.code === "BILLING_PRIORITY_HOLD",
+  "月額度達 90% 後停止非 P0/P1",
+);
+const warningRoot = fs.mkdtempSync(path.join(os.tmpdir(), "billing-warning-")),
+  warningLease = createBillingFirewall({
+    root: warningRoot,
+    priceRegistry: prices,
+    policy: priorityPolicy(90),
+    clock: () => now,
+  }).reserve(
+    createInvocationSpec({
+      ...base,
+      invocation_id: "inv-warning",
+      idempotency_key: "idem-warning",
+    }),
+    { work_unit_budget_id: "wu-warning", canary_wave: "wave1", priority: "P1" },
+  );
+assert.equal(warningLease.budget_warning, "ACCOUNT_MONTH_80_PERCENT");
+const hardRoot = fs.mkdtempSync(path.join(os.tmpdir(), "billing-hard-"));
+assert.throws(
+  () =>
+    createBillingFirewall({
+      root: hardRoot,
+      priceRegistry: prices,
+      policy: priorityPolicy(74),
+      clock: () => now,
+    }).reserve(
+      createInvocationSpec({
+        ...base,
+        invocation_id: "inv-hard",
+        idempotency_key: "idem-hard",
+      }),
+      { work_unit_budget_id: "wu-hard", canary_wave: "wave1", priority: "P0" },
+    ),
+  (error) => error.code === "BILLING_HARD_CAP",
+  "P0 也不能突破 account monthly hard cap",
+);
+const progressRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "billing-progress-"),
+  ),
+  progressFirewall = createBillingFirewall({
+    root: progressRoot,
+    priceRegistry: prices,
+    policy,
+    clock: () => now,
+  });
+for (let index = 1; index <= 2; index += 1) {
+  const progressSpec = createInvocationSpec({
+      ...base,
+      invocation_id: `inv-no-progress-${index}`,
+      idempotency_key: `idem-no-progress-${index}`,
+    }),
+    progressLease = progressFirewall.reserve(progressSpec, {
+      work_unit_budget_id: `wu-no-progress-${index}`,
+      canary_wave: "wave1",
+    }),
+    settled = progressFirewall.settle(progressLease.lease_id, {
+      provider_request_id: `req-no-progress-${index}`,
+      final_cost_microusd: 1,
+      outcome_proven: true,
+    });
+  if (index === 2) assert.equal(settled.global_hold, "CONSECUTIVE_NO_PROGRESS");
+}
+assert.throws(
+  () =>
+    progressFirewall.reserve(
+      createInvocationSpec({
+        ...base,
+        invocation_id: "inv-after-no-progress",
+        idempotency_key: "idem-after-no-progress",
+      }),
+      { work_unit_budget_id: "wu-after", canary_wave: "wave1" },
+    ),
+  (error) => error.code === "GLOBAL_BILLING_HOLD",
+);
+assert.throws(
+  () =>
+    progressFirewall.releaseConsecutiveNoProgressHold({
+      evidence_sha256: "bad",
+      operator_reason: "verified tunnel repair",
+    }),
+  (error) => error.code === "BILLING_HOLD_RELEASE_DENIED",
+  "無效證據不得解除 hold",
+);
+const holdRelease = progressFirewall.releaseConsecutiveNoProgressHold({
+  evidence_sha256: "b".repeat(64),
+  operator_reason: "verified tunnel repair and zero-cost reconciliation",
+});
+assert.equal(holdRelease.hold.reason, "CONSECUTIVE_NO_PROGRESS");
+assert.equal(progressFirewall.snapshot().global_hold, null);
+assert.equal(progressFirewall.snapshot().no_progress_streak, 0);
+assert.equal(
+  progressFirewall.snapshot().hold_releases[0].evidence_sha256,
+  "b".repeat(64),
+);
+assert.equal(
+  progressFirewall.reserve(
+    createInvocationSpec({
+      ...base,
+      invocation_id: "inv-after-release",
+      idempotency_key: "idem-after-release",
+    }),
+    { work_unit_budget_id: "wu-after", canary_wave: "wave1" },
+  ).status,
+  "ACTIVE",
+);
+const proofRoot = fs.mkdtempSync(path.join(os.tmpdir(), "billing-proof-")),
+  proofFirewall = createBillingFirewall({
+    root: proofRoot,
+    priceRegistry: prices,
+    policy,
+    clock: () => now,
+  }),
+  proofSpec = createInvocationSpec({
+    ...base,
+    invocation_id: "inv-proof",
+    idempotency_key: "idem-proof",
+  }),
+  proofLease = proofFirewall.reserve(proofSpec, {
+    work_unit_budget_id: "wu-proof",
+    canary_wave: "wave1",
+  });
+assert.equal(
+  proofFirewall.settle(proofLease.lease_id, {
+    provider_request_id: "req-proof",
+    final_cost_microusd: 1,
+    outcome_proven: true,
+    progress_proof: {
+      kind: "artifact",
+      sha256: "a".repeat(64),
+      verified: true,
+    },
+  }).global_hold,
+  null,
+);
+assert.equal(proofFirewall.snapshot().no_progress_streak, 0);
+const crashRoot = fs.mkdtempSync(path.join(os.tmpdir(), "billing-recovery-")),
+  next = {
+    schema_version: 1,
+    generation: 1,
+    last_wall_time_ms: now,
+    no_progress_streak: 0,
+    global_hold: { reason: "crash", held_at_ms: now },
+    reservations: {},
+    committed: [],
+    used_grants: {},
+  },
+  intent = {
+    schema_version: 1,
+    previous_generation: 0,
+    next_generation: 1,
+    operation: "hold",
+    next_state: next,
+  },
+  stable = (value) =>
+    Array.isArray(value)
+      ? value.map(stable)
+      : value && typeof value === "object"
+        ? Object.fromEntries(
+            Object.keys(value)
+              .sort()
+              .map((key) => [key, stable(value[key])]),
+          )
+        : value;
+intent.next_state_sha256 = crypto
+  .createHash("sha256")
+  .update(JSON.stringify(stable(next)))
+  .digest("hex");
+fs.writeFileSync(
+  path.join(crashRoot, "billing-state.intent.json"),
+  JSON.stringify(intent),
+);
+assert.equal(recoverBillingFirewall(crashRoot).recovered, true);
+assert.equal(
+  createBillingFirewall({
+    root: crashRoot,
+    priceRegistry: prices,
+    policy,
+    clock: () => now,
+  }).snapshot().global_hold.reason,
+  "crash",
+);
+for (const directory of [
+  root,
+  crashRoot,
+  exhaustedRoot,
+  grantRoot,
+  priorityRoot,
+  warningRoot,
+  hardRoot,
+  progressRoot,
+  proofRoot,
+])
+  fs.rmSync(directory, { recursive: true, force: true });
+console.log("BILLING_FIREWALL_TESTS_OK");
