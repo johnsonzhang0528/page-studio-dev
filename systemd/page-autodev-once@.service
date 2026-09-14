@@ -6,6 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=%h/page-studio-dev/projects/%i
+ExecStartPre=%h/page-studio-dev/bin/page-autodev-controlled-preflight.mjs
 ExecStart=%h/page-studio-dev/bin/page-autodev run %i
 Environment=PAGE_AUTODEV_NO_BACKGROUND=1
 LoadCredential=billing_reservation_credential:/etc/page-autodev/credentials/billing-reservation-credential

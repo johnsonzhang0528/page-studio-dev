@@ -15,10 +15,15 @@ const service=fs.readFileSync(new URL('../systemd/page-autodev@.service',import.
 const onceService=fs.readFileSync(new URL('../systemd/page-autodev-once@.service',import.meta.url),'utf8');
 const launcher=fs.readFileSync(new URL('../bin/page-autodev',import.meta.url),'utf8');
 const controller=fs.readFileSync(new URL('../lib/autodev.mjs',import.meta.url),'utf8');
+const controlledPreflight=fs.readFileSync(new URL('../bin/page-autodev-controlled-preflight.mjs',import.meta.url),'utf8');
 assert.match(service,/^LoadCredential=billing_reservation_credential:\/etc\/page-autodev\/credentials\/billing-reservation-credential$/m);
 assert.match(onceService,/^LoadCredential=billing_reservation_credential:\/etc\/page-autodev\/credentials\/billing-reservation-credential$/m);
 assert.match(onceService,/^Environment=PAGE_AUTODEV_NO_BACKGROUND=1$/m);
 assert.match(onceService,/^ExecStart=%h\/page-studio-dev\/bin\/page-autodev run %i$/m);
+for(const unit of [service,onceService]) assert.match(unit,/^ExecStartPre=%h\/page-studio-dev\/bin\/page-autodev-controlled-preflight\.mjs$/m);
+assert.match(controlledPreflight,/billing_reservation_credential/);
+assert.match(controlledPreflight,/billing-gateway\.sock/);
+assert.doesNotMatch(controlledPreflight,/readFile|OPENAI_API_KEY|console\.log\(credential/,'preflight must inspect metadata only and never read or print credential contents');
 assert.doesNotMatch(launcher,/\(activate-canary\|start\|resume\|resume-once\|run/,'launch request must not hold the worker project lock');
 assert.match(controller,/systemctl',\['--user','start','--wait',unit\]/,'interactive launch must delegate to the credential-bearing service');
 assert.match(controller,/為避免缺少 Billing 通行證，未直接執行模型工作/,'missing controlled unit must fail closed without direct model execution');

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../lib/autodev.mjs',import.meta.url),'utf8');
 const start=source.indexOf("if(result.quota_admission?.reason==='usage_unavailable_fail_closed')");
-const end=source.indexOf('if(authenticationError(combined))',start);
+const end=source.indexOf('if(result.provider_dispatch_denied)',start);
 assert(start>=0&&end>start,'必須保留額度可見性失敗的獨立處理分支');
 const branch=source.slice(start,end);
 assert(branch.includes('scheduleServiceRetry'),'額度資訊不可用時仍須自動重試');
