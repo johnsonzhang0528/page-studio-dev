@@ -108,6 +108,27 @@ export class DurableSpendLedger {
     });
   }
 
+  async reconcileProviderCost(leaseId, {actual_microusd, provider_task_id, evidence_sha256} = {}) {
+    if (!Number.isSafeInteger(actual_microusd) || actual_microusd < 0) throw new Error('INVALID_ACTUAL_COST');
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/.test(provider_task_id ?? '')) throw new Error('INVALID_PROVIDER_TASK_ID');
+    if (!/^[a-f0-9]{64}$/.test(evidence_sha256 ?? '')) throw new Error('RECONCILIATION_EVIDENCE_REQUIRED');
+    return this.#mutate(records => {
+      const record = this.#find(records, leaseId);
+      const reconciliation = {reason: 'PROVIDER_COST_CONFIRMED', provider_task_id, evidence_sha256};
+      if (record.status === 'SETTLED' && record.actual_microusd === actual_microusd &&
+          JSON.stringify(record.reconciliation) === JSON.stringify(reconciliation)) {
+        return {result: {...record, deduplicated: true}, changed: false};
+      }
+      if (record.status !== 'UNKNOWN_HOLD') throw new Error(`INVALID_TRANSITION:${record.status}->SETTLED`);
+      if (actual_microusd > record.reserved_microusd) throw new Error('ACTUAL_COST_EXCEEDS_RESERVATION');
+      record.actual_microusd = actual_microusd;
+      record.cost_variance_ratio = record.reserved_microusd === 0 ? 0 : (actual_microusd - record.reserved_microusd) / record.reserved_microusd;
+      record.status = 'SETTLED';
+      record.reconciliation = reconciliation;
+      return {result: {...record, deduplicated: false}, changed: true};
+    });
+  }
+
   async #mutate(operation) {
     return this.#withLock(async () => {
       const records = await this.#read();

@@ -63,3 +63,28 @@ test('identity fields cannot inject alternate ledger keys', async t => {
   await assert.rejects(() => ledger.reserve({...request('a'), day: '../escape'}), /INVALID_DAY/);
 });
 test('unknown hold requires machine evidence before no-dispatch reconciliation',async t=>{const {ledger}=await sandbox(t),lease=await ledger.reserve(request('f'));await ledger.markDispatched(lease.lease_id,'provider-1');await ledger.markUnknown(lease.lease_id);await assert.rejects(()=>ledger.reconcileNoDispatch(lease.lease_id,{reason:'guess',evidence_sha256:'a'.repeat(64)}),/EVIDENCE/);const reconciled=await ledger.reconcileNoDispatch(lease.lease_id,{reason:'SERVICE_CRASHED_BEFORE_LISTENER',evidence_sha256:'a'.repeat(64)});assert.equal(reconciled.status,'REJECTED');});
+
+test('provider evidence reconciles an unknown hold to its confirmed cost', async t => {
+  const {ledger} = await sandbox(t, {daily_cap_microusd: 100_000});
+  const lease = await ledger.reserve({...request('9'), estimated_microusd: 86_400});
+  await ledger.markDispatched(lease.lease_id, 'balanced-calibration:request');
+  await ledger.markUnknown(lease.lease_id);
+  const input = {actual_microusd: 14_400, provider_task_id: '09141514-2497-0400-0000-c6ab0f221c11', evidence_sha256: 'b'.repeat(64)};
+  const settled = await ledger.reconcileProviderCost(lease.lease_id, input);
+  assert.equal(settled.status, 'SETTLED');
+  assert.equal(settled.actual_microusd, 14_400);
+  assert.equal(settled.cost_variance_ratio, -5 / 6);
+  assert.deepEqual(settled.reconciliation, {reason: 'PROVIDER_COST_CONFIRMED', provider_task_id: input.provider_task_id, evidence_sha256: input.evidence_sha256});
+  assert.equal((await ledger.reconcileProviderCost(lease.lease_id, input)).deduplicated, true);
+});
+
+test('provider reconciliation fails closed on excess cost, missing evidence, or a conflicting replay', async t => {
+  const {ledger} = await sandbox(t);
+  const lease = await ledger.reserve(request('8'));
+  await ledger.markDispatched(lease.lease_id, 'provider-request');
+  await ledger.markUnknown(lease.lease_id);
+  await assert.rejects(() => ledger.reconcileProviderCost(lease.lease_id, {actual_microusd: 10_001, provider_task_id: 'task-1', evidence_sha256: 'c'.repeat(64)}), /EXCEEDS_RESERVATION/);
+  await assert.rejects(() => ledger.reconcileProviderCost(lease.lease_id, {actual_microusd: 9_000, provider_task_id: 'task-1'}), /EVIDENCE/);
+  await ledger.reconcileProviderCost(lease.lease_id, {actual_microusd: 9_000, provider_task_id: 'task-1', evidence_sha256: 'c'.repeat(64)});
+  await assert.rejects(() => ledger.reconcileProviderCost(lease.lease_id, {actual_microusd: 8_000, provider_task_id: 'task-1', evidence_sha256: 'c'.repeat(64)}), /INVALID_TRANSITION/);
+});
