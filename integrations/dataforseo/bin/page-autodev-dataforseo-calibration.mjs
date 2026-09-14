@@ -13,6 +13,7 @@ import {normalizeBalancedKeywordIdeas} from '../lib/dataforseo-normalizer.mjs';
 import {balanceDiscoveryRows} from '../lib/discovery-quality.mjs';
 import {buildCalibrationReport} from '../lib/calibration-report.mjs';
 import {estimateBalancedKeywordIdeasMicrousd} from '../lib/provider-registry.mjs';
+import {dispatchBalancedKeywordIdeas} from '../lib/balanced-calibration-dispatch.mjs';
 
 if(process.platform!=='linux'||process.getuid?.()!==0)throw new Error('ROOT_LINUX_CALIBRATION_REQUIRED');
 const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -36,14 +37,10 @@ let lease;
 try{
   const admission=await gateway.authorize({capability:'keyword_ideas_balanced',request:requests,estimated_microusd,project_id,day});
   if(!admission.ok)throw new Error(`ADMISSION:${admission.reason}`);lease=admission.lease;
-  const body=Buffer.from(JSON.stringify(requests)),body_sha256=crypto.createHash('sha256').update(body).digest('hex');
   const secret=Buffer.from(fs.readFileSync('/etc/page-autodev/credentials/gateway-assertion-secret','utf8').trim(),'base64'),authority=createDataForSeoAssertionAuthority({secret});
-  const apiPath='/v3/dataforseo_labs/google/keyword_ideas/live',gateway_assertion=authority.issue({request_id,body_sha256,lease_id:lease.lease_id,path:apiPath});
+  const apiPath='/v3/dataforseo_labs/google/keyword_ideas/live';
   await ledger.markDispatched(lease.lease_id,request_id);
-  const raw=await createDataForSeoUnixClient()({gateway_assertion,request_id,method:'POST',path:apiPath,body,body_sha256,lease_id:lease.lease_id});
-  if(raw.status!==200)throw new Error(`HTTP_${raw.status}`);const envelope=JSON.parse(raw.body.toString('utf8'));
-  if(envelope.status_code!==20000||!Array.isArray(envelope.tasks)||envelope.tasks.length!==requests.length||envelope.tasks.some(task=>task.status_code!==20000))throw new Error(`PROVIDER_BATCH_STATUS_${envelope.status_code}`);
-  const actual_microusd=Math.round(envelope.tasks.reduce((sum,task)=>sum+Number(task.cost??0),0)*1_000_000);
+  const dispatch=await dispatchBalancedKeywordIdeas({requests,path:apiPath,lease_id:lease.lease_id,request_id,authority,client:createDataForSeoUnixClient()}),envelope=dispatch.envelope,actual_microusd=dispatch.actual_microusd;
   if(!Number.isSafeInteger(actual_microusd)||actual_microusd<1||actual_microusd>estimated_microusd)throw new Error('ACTUAL_COST_OUT_OF_BOUNDS');
   await ledger.settle(lease.lease_id,actual_microusd);
   const retrieved_at=new Date().toISOString(),contexts=plan.map(item=>({source_seed:item.source_seed,request_fingerprint:requestFingerprint(item.request),retrieved_at,location_code:2158,language_code:'zh-TW',endpoint:'dataforseo_labs/google/keyword_ideas/live'}));
@@ -55,4 +52,12 @@ try{
   const artifact={schema_version:2,request_plan_sha256,retrieved_at,provider:'dataforseo',actual_microusd,lease_id:lease.lease_id,quality,report,rows};
   fs.mkdirSync('/var/lib/page-autodev/dataforseo',{recursive:true});fs.writeFileSync('/var/lib/page-autodev/dataforseo/calibration-60-v2.json',`${JSON.stringify(artifact,null,2)}\n`,{mode:0o600});
   console.log(JSON.stringify({ok:quality.ok&&report.ok,actual_microusd,lease_id:lease.lease_id,quality:quality.metrics,report:artifact.report}));
-}catch(error){if(lease)await ledger.markUnknown(lease.lease_id).catch(()=>{});console.error(JSON.stringify({ok:false,error:String(error.message)}));process.exitCode=1;}
+}catch(error){
+  if(lease){
+    if(Number.isSafeInteger(error.known_microusd)&&error.known_microusd>=0)await ledger.settle(lease.lease_id,error.known_microusd).catch(()=>ledger.markUnknown(lease.lease_id).catch(()=>{}));
+    else await ledger.markUnknown(lease.lease_id).catch(()=>{});
+  }
+  const failure={schema_version:1,failed_at:new Date().toISOString(),request_plan_sha256,error:String(error.message),known_microusd:Number.isSafeInteger(error.known_microusd)?error.known_microusd:null,provider_evidence:error.provider_evidence??[]};
+  fs.mkdirSync('/var/lib/page-autodev/dataforseo',{recursive:true});fs.writeFileSync('/var/lib/page-autodev/dataforseo/calibration-60-v2-failure.json',`${JSON.stringify(failure,null,2)}\n`,{mode:0o600});
+  console.error(JSON.stringify({ok:false,error:String(error.message),known_microusd:failure.known_microusd,provider_evidence:failure.provider_evidence}));process.exitCode=1;
+}
