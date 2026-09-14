@@ -17,5 +17,6 @@ try{
   const authority=createBillingGatewayCredentialAuthority({secret,controller_credential_policy:{accepted_generations:['wave-b'],revoked_before_ms:0,max_ttl_ms:2592000000}});
   assert.equal(authority.verifyControllerCredential(fs.readFileSync(output,'utf8').trim()).generation,'wave-b');
   if(process.platform!=='win32')assert.equal(fs.statSync(output).mode&0o777,0o600);
+  const invalid=spawnSync(process.execPath,[fileURLToPath(new URL('../bin/page-autodev-issue-controller-credential.mjs',import.meta.url))],{encoding:'utf8',env:{PATH:process.env.PATH,CREDENTIALS_DIRECTORY:credentials,CONTROLLER_CREDENTIAL_OUTPUT:path.join(root,'invalid.token'),CONTROLLER_CREDENTIAL_OUTPUT_MODE:'666'}});assert.notEqual(invalid.status,0);
 }finally{fs.rmSync(root,{recursive:true,force:true});}
 console.log('CONTROLLER_CREDENTIAL_PROVISIONING_TESTS_OK');
