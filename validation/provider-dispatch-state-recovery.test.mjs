@@ -8,6 +8,6 @@ assert.match(source,/for\(const candidate of plan\?\.units\?\?\[\]\)\{\s*if\(can
 assert.match(source,/【孤立工作單元復原】/);
 assert.match(source,/candidate\.status==='pending'.*candidate\.session_id\|\|candidate\.started_at/s,'state recovery must remove stale execution metadata from pending units');
 assert.match(source,/s\.next_action='執行 page-autodev resume 續接下一個待執行工作單元'/,'recovered state must not retain the obsolete blocker action');
-assert.match(source,/cmd==='recover-state'[\s\S]*clearHold\(checked\);[\s\S]*timer\(checked,false\)/,'controlled state recovery must not launch the project timer');
+assert.match(source,/cmd==='recover-state'[\s\S]*clearHold\(checked,\{force:true\}\);[\s\S]*timer\(checked,false\)/,'controlled state recovery must be idempotent and must not launch the project timer');
 assert.match(source,/未啟動服務，也未派發任何模型請求/,'state recovery must state its non-dispatch guarantee');
 console.log('PROVIDER_DISPATCH_STATE_RECOVERY_TESTS_OK');
