@@ -3,7 +3,7 @@ import {validateKeywordIdeasExpansionRequest} from './dataforseo-contract.mjs';
 const fail=(code,evidence,known_microusd)=>Object.assign(new Error(code),{provider_evidence:evidence,known_microusd});
 function providerCost(value){const number=Number(value);if(!Number.isFinite(number)||number<0)return null;const converted=number*1_000_000;return Number.isSafeInteger(Math.round(converted))?Math.round(converted):null;}
 export async function dispatchKeywordIdeasExpansion({requests,path,lease_id,request_id,authority,client,on_task,expected_task_count=5}={}){
-  if(![4,5].includes(expected_task_count)||!Array.isArray(requests)||requests.length!==expected_task_count)throw fail('EXPANSION_BATCH_INVALID',[],0);
+  if(![1,4,5].includes(expected_task_count)||!Array.isArray(requests)||requests.length!==expected_task_count)throw fail('EXPANSION_BATCH_INVALID',[],0);
   for(const [index,request] of requests.entries()){const v=validateKeywordIdeasExpansionRequest(request);if(!v.ok)throw fail(`TASK_${index}:${v.errors.join(',')}`,[],0);}
   if(typeof authority?.issue!=='function'||typeof client!=='function'||typeof on_task!=='function')throw fail('DISPATCH_DEPENDENCY_INVALID',[],0);
   const tasks=[],evidence=[];let known_microusd=0;
