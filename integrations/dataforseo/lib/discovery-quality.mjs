@@ -52,8 +52,10 @@ export function balanceDiscoveryRows(rows,{seeds,profiles={},per_seed_quota=10,m
     const key=canonicalKeyword(row?.query);
     if(!key){contaminated.push({...row,quality_class:'contaminated',quality_reason:'QUERY_INVALID'});continue;}
     const classification=classifyDiscoveryRow(row,profiles[sourceSeed],current_year);
-    const brandTerms=compileTerms(profiles[sourceSeed]?.brand_terms),isBrand=containsAny(key,brandTerms);
-    const enriched={...row,source_seed:sourceSeed,canonical_query:key,dedupe_key:keywordDedupeKey(key),is_brand_query:isBrand,serp_review_required:!(Number.isFinite(row?.kd)&&row.kd>=0&&row.kd<=100),quality_class:classification.class,quality_reason:classification.reason};
+    const profile=profiles[sourceSeed]??{},brandTerms=compileTerms(profile.brand_terms),isBrand=containsAny(key,brandTerms);
+    const allowedLatin=new Set(compileTerms(profile.allowed_generic_latin_terms));
+    const unlistedLatin=profile.review_unlisted_latin_tokens===true&&!isBrand&&[...key.matchAll(/[a-z][a-z0-9.-]*/gu)].some(match=>!allowedLatin.has(match[0]));
+    const enriched={...row,source_seed:sourceSeed,canonical_query:key,dedupe_key:keywordDedupeKey(key),is_brand_query:isBrand,serp_review_required:!(Number.isFinite(row?.kd)&&row.kd>=0&&row.kd<=100),quality_class:unlistedLatin&&classification.class==='relevant'?'uncertain':classification.class,quality_reason:unlistedLatin&&classification.class==='relevant'?'UNLISTED_LATIN_PRODUCT_TERM':classification.reason};
     if(classification.class==='contaminated'){perSeed[sourceSeed].contaminated++;contaminated.push(enriched);continue;}
     classified.push(enriched);
   }

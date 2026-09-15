@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {buildSeedDiscoveryPlan} from '../lib/query-candidate-builder.mjs';
 import {balanceDiscoveryRows,canonicalKeyword,keywordDedupeKey} from '../lib/discovery-quality.mjs';
 
@@ -41,6 +42,27 @@ test('brand concentration is capped and missing KD receives explicit SERP review
   assert.equal(result.metrics.serp_review_required_rows,6);
   assert.equal(result.metrics.uncertain_rows,0);assert.equal(result.metrics.manual_review_rows,4);
   assert.deepEqual(result.required_fallbacks,['SERP_COMPETITION_ANALYSIS']);
+});
+
+test('observed purifier brands and marketplace do not bypass Taiwan profile cap',()=>{
+  const taiwanProfiles=JSON.parse(fs.readFileSync(new URL('../fixtures/taiwan-zhtw-topic-profiles.json',import.meta.url),'utf8'));
+  const names=['dyson','honeywell','coway','sharp','blueair','acerpure','momo','vephos','brise','balmuda','bosch','puricare','nanoex'];
+  const rows=names.map((name,index)=>({source_seed:'空氣清淨機',query:`${name} 空氣清淨機`,volume:1000-index,kd:0,intent:'transactional'}));
+  const result=balanceDiscoveryRows(rows,{seeds:['空氣清淨機'],profiles:taiwanProfiles,per_seed_quota:10,minimum_per_seed:5});
+  assert.equal(result.per_seed['空氣清淨機'].brand_selected,5);
+  assert.equal(result.per_seed['空氣清淨機'].brand_limited,8);
+  assert.equal(result.selected.length,5);
+  assert.equal(result.manual_review.filter(row=>row.quality_reason==='BRAND_CONCENTRATION_LIMIT').length,8);
+});
+
+test('unlisted Latin product terms cannot silently refill nonbrand quota',()=>{
+  const taiwanProfiles=JSON.parse(fs.readFileSync(new URL('../fixtures/taiwan-zhtw-topic-profiles.json',import.meta.url),'utf8'));
+  const rows=['dyson 空氣清淨機','sampo空氣清淨機','haier 空氣清淨機','diy 空氣清淨機','空氣清淨機 casr'].map((query,index)=>({source_seed:'空氣清淨機',query,volume:100-index,kd:10,intent:'commercial'}));
+  const result=balanceDiscoveryRows(rows,{seeds:['空氣清淨機'],profiles:taiwanProfiles,per_seed_quota:5,minimum_per_seed:5});
+  assert.equal(result.ok,false);
+  assert.deepEqual(result.manual_review.filter(row=>row.quality_reason==='UNLISTED_LATIN_PRODUCT_TERM').map(row=>row.query).sort(),['haier 空氣清淨機','sampo空氣清淨機']);
+  assert.equal(result.selected.some(row=>row.query.includes('sampo')||row.query.includes('haier')),false);
+  assert.ok(result.errors.includes('SEED_COVERAGE_INSUFFICIENT'));
 });
 
 test('balanced selection prevents one seed from starving the others',()=>{

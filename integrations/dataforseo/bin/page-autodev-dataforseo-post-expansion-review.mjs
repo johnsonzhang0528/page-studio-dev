@@ -39,7 +39,7 @@ const duplicateGroups=[...groups.values()].filter(group=>group.length>1);
 const complete=quality.selected.length===60&&seeds.every(seed=>quality.per_seed[seed].selected===10);
 const hold=!quality.ok||!complete||selectedLanguageFlags.length>0||semanticReview.length>0;
 const report={schema_version:1,mode:'offline_post_expansion_review',created_at:new Date().toISOString(),network_dispatch:false,website_pilot_started:false,source_sha256:Object.fromEntries(Object.entries(bytes).map(([key,value])=>[key,sha(value)])),plan_sha256:plan.plan_sha256,provider_task_ids:[...ids],confirmed_expansion_microusd:86400,first_attempt_result_lost:true,first_seed_recovered:true,raw_rows:allRows.length,qualified_quota_complete:complete,decision:hold?'HOLD_FOR_MANUAL_QUALITY_REVIEW':quality.decision,policy_decision:quality.decision,policy_errors:quality.errors,metrics:quality.metrics,per_seed:quality.per_seed,selected_rows:quality.selected,selected_language_flags:selectedLanguageFlags,semantic_review:semanticReview,duplicate_groups:duplicateGroups,auto_enter_allowed:false};
-const target=`${data}/candidate-expansion-post-review-v1.json`;
+const target=`${data}/candidate-expansion-post-review-v4.json`;
 if(fs.existsSync(target))throw new Error('POST_REVIEW_ALREADY_EXISTS');
 atomicExpansionArtifact(target,report);
 console.log(JSON.stringify({ok:true,decision:report.decision,qualified_quota_complete:complete,selected:quality.selected.length,raw_rows:allRows.length,duplicate_ratio:quality.metrics.duplicate_ratio,language_review:selectedLanguageFlags.length,semantic_review:semanticReview.length,source_sha256:report.source_sha256}));
