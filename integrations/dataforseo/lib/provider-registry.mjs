@@ -28,6 +28,11 @@ export function estimateBalancedKeywordIdeasMicrousd(registry,requests){
   return requests.reduce((sum,request)=>sum+estimateKeywordIdeasMicrousd(registry,request?.limit),0);
 }
 
+export function estimateKeywordIdeasExpansionMicrousd(registry,requests,{max_tasks=6}={}){
+  if(!Array.isArray(requests)||requests.length>max_tasks)throw new Error('EXPANSION_BATCH_INVALID');
+  return requests.reduce((sum,request)=>sum+estimateKeywordIdeasMicrousd(registry,request?.limit),0);
+}
+
 export function estimateKeywordOverviewMicrousd(registry, keywordCount) {
   if (!Number.isSafeInteger(keywordCount) || keywordCount < 1 || keywordCount > 60) throw new Error('KEYWORD_COUNT_INVALID');
   return registry.price_snapshot.keyword_overview_task_microusd + keywordCount * registry.price_snapshot.keyword_overview_item_microusd;

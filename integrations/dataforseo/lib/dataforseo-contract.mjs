@@ -66,6 +66,20 @@ export function validateKeywordIdeasRequest(request,options={}) {
   return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(request)};
 }
 
+export function validateKeywordIdeasExpansionRequest(request){
+  const per_seed_limit=20,offset=20;
+  const errors=[];
+  if(!plainObject(request))return {ok:false,errors:['REQUEST_NOT_OBJECT'],fingerprint:null};
+  const allowed=new Set(['keywords','location_code','language_code','closely_variants','ignore_synonyms','include_serp_info','include_clickstream_data','limit','offset','filters','order_by','tag']);
+  for(const key of Object.keys(request))if(!allowed.has(key)||forbiddenKeys.has(key))errors.push(`UNKNOWN_OR_UNSAFE_FIELD:${key}`);
+  const base=validateKeywordIdeasRequest({...request,offset:undefined},{allowed_limits:[per_seed_limit]});
+  errors.push(...base.errors.filter(error=>error!=='UNKNOWN_OR_UNSAFE_FIELD:offset'));
+  if(request.keywords?.length!==1)errors.push('ONE_SEED_REQUIRED');
+  if(request.offset!==offset)errors.push('OFFSET_INVALID');
+  if(typeof request.tag!=='string'||!/^page-autodev-ideas-expand-seed-[1-6]$/.test(request.tag))errors.push('EXPANSION_TAG_INVALID');
+  return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(request)};
+}
+
 export function validateBalancedKeywordIdeasBatch(requests,{expected_seed_count=6,per_seed_limit=20}={}){
   const errors=[];
   if(!Array.isArray(requests)||requests.length!==expected_seed_count)return {ok:false,errors:['BALANCED_BATCH_SIZE_INVALID'],fingerprint:null};
