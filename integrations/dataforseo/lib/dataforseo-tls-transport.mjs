@@ -43,7 +43,7 @@ function dispatchOverFixedTls({createConnection,input,auth,maxResponseBytes,time
   });
 }
 
-export function createDataForSeoTlsTransport({login,password,request,create_connection,max_response_bytes=1048576,timeout_ms=30000}={}){
+export function createDataForSeoTlsTransport({login,password,request,create_connection,max_response_bytes=1048576,timeout_ms=90000}={}){
   if(!login||!password||(!request&&!create_connection))throw fail('CONFIG','DATAFORSEO_TLS_CONFIG_INVALID');
   const auth=Buffer.from(`${login}:${password}`).toString('base64');
   return input=>{
