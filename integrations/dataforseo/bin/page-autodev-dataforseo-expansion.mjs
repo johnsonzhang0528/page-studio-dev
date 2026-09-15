@@ -45,6 +45,17 @@ try{
     if(dispatched&&Number.isSafeInteger(error.known_microusd)&&error.known_microusd>=0)await ledger.settle(lease.lease_id,error.known_microusd).catch(()=>ledger.markUnknown(lease.lease_id));
     else await ledger.markUnknown(lease.lease_id);
   }
+  try{
+    const record=lease?(await ledger.snapshot()).find(row=>row.lease_id===lease.lease_id):null;
+    atomicExpansionArtifact(`${data}/candidate-expansion-failure-v1.json`,{
+      schema_version:1,failed_at:new Date().toISOString(),plan_sha256:plan.plan_sha256,
+      lease_id:lease?.lease_id??null,ledger_status:record?.status??null,
+      error_code:String(error.message).slice(0,200),
+      known_microusd:Number.isSafeInteger(error.known_microusd)?error.known_microusd:null,
+      provider_evidence:Array.isArray(error.provider_evidence)?error.provider_evidence:[],
+      automatic_retry_allowed:false
+    });
+  }catch{console.error('EXPANSION_FAILURE_EVIDENCE_WRITE_FAILED');}
   console.error(JSON.stringify({ok:false,error:String(error.message),known_microusd:Number.isSafeInteger(error.known_microusd)?error.known_microusd:null}));
   process.exitCode=1;
 }
