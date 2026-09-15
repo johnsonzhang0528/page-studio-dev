@@ -13,6 +13,12 @@ try{
   const listed=handleToolBrokerMessage(runtime,{jsonrpc:'2.0',id:2,method:'tools/list'});assert.deepEqual(listed.tools.map(tool=>tool.name),['read_file','list_directory','sha256_file','write_file','move_file','run_argv']);
   assert.match(runtime.call('list_directory',{path:'.'}).content[0].text,/dir\tsrc/);
   assert.equal(runtime.call('read_file',{path:'src/a.txt'}).content[0].text,'hello');assert.match(runtime.call('sha256_file',{path:'src/a.txt'}).content[0].text,/^[a-f0-9]{64}$/);runtime.call('write_file',{path:'src/b.txt',content:'safe'});assert.equal(fs.readFileSync(path.join(project,'src','b.txt'),'utf8'),'safe');
+  fs.writeFileSync(path.join(project,'src','large.txt'),Array.from({length:520},(_,index)=>`LINE-${index} ${'x'.repeat(50)}`).join('\n'));
+  const first=JSON.parse(runtime.call('read_file',{path:'src/large.txt'}).content[0].text);
+  const later=JSON.parse(runtime.call('read_file',{path:'src/large.txt',offset:500,limit:20}).content[0].text);
+  assert.equal(first.total_lines,520);assert.match(first.content,/LINE-0/);assert.doesNotMatch(first.content,/LINE-500/);
+  assert.match(later.content,/LINE-500/);assert.match(later.content,/LINE-519/);
+  assert.throws(()=>runtime.call('read_file',{path:'src/large.txt',offset:-1,limit:20}));
   runtime.call('move_file',{source:'src/b.txt',destination:'src/moved.txt'});assert.equal(fs.readFileSync(path.join(project,'src','moved.txt'),'utf8'),'safe');assert.throws(()=>runtime.call('move_file',{source:'src/a.txt',destination:'src/moved.txt'}));
   for(const target of ['.env','.git/config','.ai/PROJECT_STATE.json','.ai/runtime/tool-broker/x'])assert.throws(()=>runtime.call('read_file',{path:target}));
   assert.throws(()=>runtime.call('write_file',{path:'outside.txt',content:'escape'}));assert.throws(()=>runtime.call('run_argv',{argv:[process.execPath,'-e','fetch("https://evil")']}));
