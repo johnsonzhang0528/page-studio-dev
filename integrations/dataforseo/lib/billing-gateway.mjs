@@ -1,8 +1,8 @@
-import {validateKeywordOverviewRequest,validateKeywordIdeasRequest,validateBalancedKeywordIdeasBatch} from './dataforseo-contract.mjs';
+import {validateKeywordOverviewRequest,validateKeywordIdeasRequest,validateBalancedKeywordIdeasBatch,validateKeywordIdeasExpansionRequest,requestFingerprint} from './dataforseo-contract.mjs';
 import {validateSerpStandardRequest} from './dataforseo-serp-contract.mjs';
 import {authorizeFourLayerBudget} from './budget-policy.mjs';
 import {validateProviderRegistry} from './provider-registry.mjs';
-import {estimateKeywordOverviewMicrousd,estimateKeywordIdeasMicrousd,estimateBalancedKeywordIdeasMicrousd} from './provider-registry.mjs';
+import {estimateKeywordOverviewMicrousd,estimateKeywordIdeasMicrousd,estimateBalancedKeywordIdeasMicrousd,estimateKeywordIdeasExpansionMicrousd} from './provider-registry.mjs';
 
 export class BillingGateway {
   constructor({ledger, registry, budget_policy, usage_reader, clock = () => Date.now(), activation_mode = 'disabled'}) {
@@ -22,6 +22,7 @@ export class BillingGateway {
     const contract = capability === 'keyword_overview' ? validateKeywordOverviewRequest(request)
       : capability === 'keyword_ideas' ? validateKeywordIdeasRequest(request)
       : capability === 'keyword_ideas_balanced' ? validateBalancedKeywordIdeasBatch(request)
+      : capability === 'keyword_ideas_expansion' ? (()=>{const errors=[];if(!Array.isArray(request)||request.length<1||request.length>6)return {ok:false,errors:['EXPANSION_BATCH_INVALID']};request.forEach((item,index)=>{const check=validateKeywordIdeasExpansionRequest(item);if(!check.ok)errors.push(...check.errors.map(error=>`TASK_${index}:${error}`));});return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(request)};})()
       : capability === 'serp_standard' ? validateSerpStandardRequest(request)
       : {ok: false, errors: ['CAPABILITY_FORBIDDEN']};
     if (!contract.ok) return {ok: false, reason: 'REQUEST_CONTRACT_REJECTED', errors: contract.errors};
@@ -31,6 +32,7 @@ export class BillingGateway {
     }
     if (capability === 'keyword_ideas') {const trustedEstimate=estimateKeywordIdeasMicrousd(this.registry,request.limit);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
     if (capability === 'keyword_ideas_balanced') {const trustedEstimate=estimateBalancedKeywordIdeasMicrousd(this.registry,request);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
+    if (capability === 'keyword_ideas_expansion') {const trustedEstimate=estimateKeywordIdeasExpansionMicrousd(this.registry,request);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
     const usage = await this.usageReader({project_id, day});
     const budget = authorizeFourLayerBudget({estimated_microusd, ...usage}, this.budgetPolicy);
     if (!budget.ok) return budget;
