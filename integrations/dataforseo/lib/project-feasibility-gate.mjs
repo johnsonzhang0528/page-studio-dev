@@ -1,0 +1,13 @@
+const requirements={
+  '寵物友善住宿':{content_model:'LOCAL_EDITORIAL_DATABASE',minimum_capabilities:['local_fact_verification','ongoing_price_and_policy_updates','original_or_licensed_photos','accommodation_outreach','commercial_disclosure'],known_advantages:['commercial_search_intent','independent_publishers_visible_in_serp'],known_risks:['high_freshness_burden','first_party_evidence_gap','ota_and_supplier_competition','local_claim_accuracy'],provisional_decision:'HOLD_CAPABILITY_GAP'},
+  'Excel工作技巧':{content_model:'REPRODUCIBLE_TUTORIAL_LIBRARY',minimum_capabilities:['versioned_excel_test_environment','original_workbook_examples','step_by_step_screenshots','update_monitoring','technical_editorial_qa'],known_advantages:['evergreen_problem_queries','independent_tutorials_visible_in_serp','reproducible_first_party_evidence_possible','low_policy_risk'],known_risks:['microsoft_version_drift','broad_head_term_competition','screenshot_and_example_maintenance'],provisional_decision:'PILOT_PENDING_CAPS'}
+};
+export function buildProjectFeasibilityGate(serpReview,capabilityMap={}){
+  if(serpReview?.mode!=='OFFLINE_SERP_EVIDENCE_REVIEW'||serpReview?.automatic_enter!==false)throw new Error('VERIFIED_SERP_REVIEW_REQUIRED');
+  const pilots=serpReview.assessments.filter(row=>row.decision==='PILOT_CANDIDATE');if(pilots.length!==2)throw new Error('TWO_PILOT_CANDIDATES_REQUIRED');
+  const resourceFields=['monthly_hours','monthly_budget_twd','content_units_per_month','maintenance_hours_per_month'],assetFields=['development','research','design','domain_expertise','original_data','outreach'];
+  const normalized={resources:Object.fromEntries(resourceFields.map(key=>[key,capabilityMap.resources?.[key]??null])),assets:Object.fromEntries(assetFields.map(key=>[key,capabilityMap.assets?.[key]??null]))};
+  const missing=[...resourceFields.map(key=>`resources.${key}`),...assetFields.map(key=>`assets.${key}`)].filter(path=>{const [group,key]=path.split('.');return normalized[group][key]===null;});
+  const candidates=pilots.map(row=>({...requirements[row.topic],topic:row.topic,serp_competition:row.competition,capability_evidence:Object.fromEntries(requirements[row.topic].minimum_capabilities.map(key=>[key,capabilityMap.evidence?.[row.topic]?.[key]??null])),confidence:missing.length?'C':'B',final_decision:null,niche_score:null}));
+  return {schema_version:1,mode:'PROJECT_FEASIBILITY_GATE',writes_to_business_state:false,project_created:false,automatic_enter:false,capability_map:normalized,missing_capability_fields:missing,candidates,decision:'NEEDS_OPERATOR_CAPABILITY_INPUT',next_gate:'COMPLETE_CAPABILITY_MAP_THEN_SCORE_PILOT_ECONOMICS'};
+}
