@@ -1,4 +1,4 @@
-import {validateKeywordOverviewRequest,validateKeywordIdeasRequest,validateBalancedKeywordIdeasBatch,validateKeywordIdeasExpansionRequest,requestFingerprint} from './dataforseo-contract.mjs';
+import {validateKeywordOverviewRequest,validateKeywordIdeasRequest,validateBalancedKeywordIdeasBatch,validateNicheKeywordIdeasBatch,validateKeywordIdeasExpansionRequest,requestFingerprint} from './dataforseo-contract.mjs';
 import {validateSerpStandardRequest,validateSerpLiveAdvancedRequest} from './dataforseo-serp-contract.mjs';
 import {authorizeFourLayerBudget} from './budget-policy.mjs';
 import {validateProviderRegistry} from './provider-registry.mjs';
@@ -22,6 +22,7 @@ export class BillingGateway {
     const contract = capability === 'keyword_overview' ? validateKeywordOverviewRequest(request)
       : capability === 'keyword_ideas' ? validateKeywordIdeasRequest(request)
       : capability === 'keyword_ideas_balanced' ? validateBalancedKeywordIdeasBatch(request)
+      : capability === 'keyword_ideas_niche_validation' ? validateNicheKeywordIdeasBatch(request)
       : capability === 'keyword_ideas_expansion' ? (()=>{const errors=[];if(!Array.isArray(request)||request.length<1||request.length>6)return {ok:false,errors:['EXPANSION_BATCH_INVALID']};request.forEach((item,index)=>{const check=validateKeywordIdeasExpansionRequest(item);if(!check.ok)errors.push(...check.errors.map(error=>`TASK_${index}:${error}`));});return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(request)};})()
       : capability === 'serp_standard' ? validateSerpStandardRequest(request)
       : capability === 'serp_live_advanced' ? validateSerpLiveAdvancedRequest(request)
@@ -33,6 +34,7 @@ export class BillingGateway {
     }
     if (capability === 'keyword_ideas') {const trustedEstimate=estimateKeywordIdeasMicrousd(this.registry,request.limit);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
     if (capability === 'keyword_ideas_balanced') {const trustedEstimate=estimateBalancedKeywordIdeasMicrousd(this.registry,request);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
+    if (capability === 'keyword_ideas_niche_validation') {const trustedEstimate=request.reduce((sum,item)=>sum+estimateKeywordIdeasMicrousd(this.registry,item.limit),0);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
     if (capability === 'keyword_ideas_expansion') {const trustedEstimate=estimateKeywordIdeasExpansionMicrousd(this.registry,request);if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
     if (capability === 'serp_live_advanced') {let trustedEstimate;try{trustedEstimate=estimateSerpLiveAdvancedMicrousd(this.registry,this.clock());}catch(error){return {ok:false,reason:'SERP_PRICE_SNAPSHOT_INVALID',errors:[error.message]};}if(estimated_microusd!==trustedEstimate)return {ok:false,reason:'UNTRUSTED_COST_ESTIMATE',trusted_estimated_microusd:trustedEstimate};}
     const usage = await this.usageReader({project_id, day});

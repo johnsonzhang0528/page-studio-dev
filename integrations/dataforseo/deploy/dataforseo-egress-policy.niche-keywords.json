@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "activation": "active",
+  "service_identity": "page-autodev-dataforseo-egress",
+  "listener": {"transport": "unix", "path": "/run/page-autodev/dataforseo-egress.sock"},
+  "upstream": {"hostname": "api.dataforseo.com", "port": 443, "tls_servername": "api.dataforseo.com", "minimum_tls": "TLSv1.2", "paths": ["/v3/dataforseo_labs/google/keyword_ideas/live"], "methods": ["POST"], "redirects": 0, "retries": 0},
+  "credential": {"source": "systemd", "gateway_readable": false, "worker_readable": false}
+}

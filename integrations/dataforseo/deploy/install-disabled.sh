@@ -38,6 +38,7 @@ chown -R root:root "${target_root}"
 find "${target_root}" -type d -exec chmod 0755 {} +
 find "${target_root}" -type f -exec chmod 0644 {} +
 chmod 0755 "${target_root}/deploy/install-disabled.sh"
+chmod 0755 "${target_root}/deploy/run-niche-keyword-canary.sh"
 
 install -o root -g root -m 0600 "${source_root}/deploy/dataforseo-egress-policy.disabled.json" "${credential_root}/dataforseo-egress-policy.json"
 if [[ ! -e "${credential_root}/gateway-assertion-secret" ]]; then

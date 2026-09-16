@@ -95,6 +95,21 @@ export function validateBalancedKeywordIdeasBatch(requests,{expected_seed_count=
   return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(requests)};
 }
 
+export function validateNicheKeywordIdeasBatch(requests,{expected_seed_count=10,per_seed_limit=20}={}){
+  const errors=[];
+  if(!Array.isArray(requests)||requests.length!==expected_seed_count)return {ok:false,errors:['NICHE_BATCH_SIZE_INVALID'],fingerprint:null};
+  const seeds=new Set();
+  requests.forEach((request,index)=>{
+    const validation=validateKeywordIdeasRequest(request,{allowed_limits:[per_seed_limit]});
+    if(!validation.ok)errors.push(...validation.errors.map(error=>`TASK_${index}:${error}`));
+    if(request?.keywords?.length!==1)errors.push(`TASK_${index}:ONE_SEED_REQUIRED`);
+    const seed=typeof request?.keywords?.[0]==='string'?request.keywords[0].trim().normalize('NFKC').toLocaleLowerCase('zh-TW'):'';
+    if(!seed||seeds.has(seed))errors.push(`TASK_${index}:SEED_DUPLICATE_OR_INVALID`);else seeds.add(seed);
+    if(request?.tag!==`page-autodev-ideas-niche-${String(index+1).padStart(2,'0')}`)errors.push(`TASK_${index}:TAG_ORDER_INVALID`);
+  });
+  return {ok:errors.length===0,errors,fingerprint:errors.length?null:requestFingerprint(requests)};
+}
+
 export function authorizeEstimatedCost(estimatedMicrousd, options = {}) {
   const limits = {...DEFAULT_LIMITS, ...(options.limits ?? {})};
   if (!Number.isSafeInteger(estimatedMicrousd) || estimatedMicrousd < 0) return {ok:false, reason:'INVALID_ESTIMATE'};
