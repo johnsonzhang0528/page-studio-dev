@@ -37,3 +37,17 @@ export function estimateKeywordOverviewMicrousd(registry, keywordCount) {
   if (!Number.isSafeInteger(keywordCount) || keywordCount < 1 || keywordCount > 60) throw new Error('KEYWORD_COUNT_INVALID');
   return registry.price_snapshot.keyword_overview_task_microusd + keywordCount * registry.price_snapshot.keyword_overview_item_microusd;
 }
+
+export function estimateSerpLiveAdvancedMicrousd(registry, now = Date.now()) {
+  const snapshot = registry?.serp_live_price_snapshot;
+  if (snapshot?.source !== 'https://dataforseo.com/pricing/serp/google-organic-serp-api' ||
+      snapshot.ten_result_task_microusd !== 2000 ||
+      !Number.isFinite(Date.parse(snapshot.captured_at)) ||
+      Date.parse(snapshot.captured_at) > now ||
+      !Number.isFinite(Date.parse(snapshot.expires_at)) ||
+      Date.parse(snapshot.expires_at) <= now ||
+      Date.parse(snapshot.expires_at) - Date.parse(snapshot.captured_at) > 7 * 86400000) {
+    throw new Error('SERP_PRICE_SNAPSHOT_UNTRUSTED_OR_STALE');
+  }
+  return 2000;
+}

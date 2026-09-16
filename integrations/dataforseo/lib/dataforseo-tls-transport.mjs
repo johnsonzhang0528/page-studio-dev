@@ -1,4 +1,4 @@
-const HOST='api.dataforseo.com',PATHS=new Set(['/v3/dataforseo_labs/google/keyword_overview/live','/v3/dataforseo_labs/google/keyword_ideas/live']);
+const HOST='api.dataforseo.com',PATHS=new Set(['/v3/dataforseo_labs/google/keyword_overview/live','/v3/dataforseo_labs/google/keyword_ideas/live','/v3/serp/google/organic/live/advanced']);
 const fail=(message,code='DATAFORSEO_TLS_DENIED')=>Object.assign(new Error(message),{code});
 
 function decodeChunked(body){

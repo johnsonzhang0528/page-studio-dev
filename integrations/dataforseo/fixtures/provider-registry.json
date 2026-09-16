@@ -2,9 +2,10 @@
   "version": 1,
   "provider": "dataforseo",
   "activation": "disabled",
-  "capabilities": ["keyword_overview", "keyword_ideas", "serp_standard"],
+  "capabilities": ["keyword_overview", "keyword_ideas", "serp_standard", "serp_live_advanced"],
   "egress_enabled_capabilities": ["keyword_overview"],
   "markets": [{"location_code": 2158, "language_code": "zh-TW", "status": "requires_live_calibration"}],
   "price_snapshot": {"source": "https://dataforseo.com/pricing/dataforseo-labs/dataforseo-google-api", "captured_at": "2026-09-10T00:00:00Z", "expires_at": "2026-09-17T00:00:00Z", "keyword_overview_task_microusd": 12000, "keyword_overview_item_microusd": 120, "keyword_ideas_task_microusd": 12000, "keyword_ideas_item_microusd": 120},
+  "serp_live_price_snapshot": {"source": "https://dataforseo.com/pricing/serp/google-organic-serp-api", "captured_at": "2026-09-16T00:00:00Z", "expires_at": "2026-09-17T00:00:00Z", "ten_result_task_microusd": 2000},
   "fallback": {"automatic": false}
 }

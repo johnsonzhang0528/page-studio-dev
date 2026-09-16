@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "location_code": 2158,
+  "language_code": "zh-TW",
+  "device": "desktop",
+  "os": "windows",
+  "depth": 10,
+  "max_microusd": 24000,
+  "queries": [
+    "免費架設網站",
+    "wordpress 架設網站",
+    "seo優化",
+    "seo 軟體",
+    "電腦版記帳軟體",
+    "餐飲業記帳軟體",
+    "diy 空氣清淨機",
+    "氣喘空氣清淨機",
+    "日本自由行推薦",
+    "日本大阪自由行",
+    "學英文",
+    "英文 學習規劃"
+  ]
+}
