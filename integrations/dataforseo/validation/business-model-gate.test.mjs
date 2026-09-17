@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {evaluateBusinessModelGate} from '../lib/business-model-gate.mjs';
+
+const base={schema_version:1,pilot_cash_cap_twd:1500,pilot_hour_cap:20,operator_hour_value_twd:null,evidence:{product_demand:'UNVERIFIED',price_willingness:'UNVERIFIED',checkout_payout:'UNVERIFIED'},product_scenarios:[{name:'CONSERVATIVE',price_twd:199,fee_buffer_bps:1500},{name:'BASE',price_twd:399,fee_buffer_bps:1500},{name:'UPSIDE',price_twd:699,fee_buffer_bps:1500}]};
+test('unknown commercial evidence hard-stops the pilot',()=>{const out=evaluateBusinessModelGate(base);assert.equal(out.decision,'HOLD_BUSINESS_MODEL_NOT_VALIDATED');assert.equal(out.can_release_pilot,false);assert.deepEqual(out.scenarios.map(x=>x.cash_break_even_sales),[9,5,3]);assert.equal(out.scenarios[0].full_cost_break_even_sales,null);});
+test('only complete verified evidence and labor value can approve',()=>{const out=evaluateBusinessModelGate({...base,operator_hour_value_twd:500,evidence:{product_demand:'VERIFIED',price_willingness:'VERIFIED',checkout_payout:'VERIFIED'}});assert.equal(out.decision,'PILOT_ECONOMICS_APPROVED');assert.equal(out.can_release_pilot,true);assert.equal(out.scenarios[1].full_cost_break_even_sales,34);});
+test('missing a scenario cannot approve',()=>{const out=evaluateBusinessModelGate({...base,operator_hour_value_twd:0,evidence:{product_demand:'VERIFIED',price_willingness:'VERIFIED',checkout_payout:'VERIFIED'},product_scenarios:base.product_scenarios.slice(0,2)});assert.equal(out.decision,'HOLD_BUSINESS_MODEL_NOT_VALIDATED');assert.ok(out.blockers.includes('THREE_SCENARIOS_REQUIRED'));});
+test('invalid negative money fails closed',()=>{assert.throws(()=>evaluateBusinessModelGate({...base,pilot_cash_cap_twd:-1}),/INVALID_PILOT_CASH_CAP_TWD/);});
