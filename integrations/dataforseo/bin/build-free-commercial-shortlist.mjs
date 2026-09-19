@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {buildFreeCommercialShortlist} from '../lib/free-commercial-shortlist.mjs';
+if(process.platform!=='linux'||process.getuid?.()!==0)throw new Error('ROOT_LINUX_FREE_SHORTLIST_REQUIRED');
+const source=process.argv[2]??'/var/lib/page-autodev/dataforseo/taiwan-niche-monetization-prefilter-v1.json';
+const target=process.argv[3]??'/var/lib/page-autodev/dataforseo/taiwan-niche-free-commercial-shortlist-v1.json';
+const bytes=fs.readFileSync(source);
+const result={...buildFreeCommercialShortlist(JSON.parse(bytes)),created_at:new Date().toISOString(),source:{path:source,sha256:crypto.createHash('sha256').update(bytes).digest('hex')}};
+const temporary=`${target}.tmp-${process.pid}`;fs.writeFileSync(temporary,`${JSON.stringify(result,null,2)}\n`,{mode:0o600});fs.renameSync(temporary,target);
+console.log(JSON.stringify({ok:true,shortlist_count:result.shortlist_count,candidates:result.candidates.map(row=>({id:row.candidate_id,topic:row.topic,score:row.free_commercial_assessment.score})),paid_api_spend_microusd:0,output:target}));
