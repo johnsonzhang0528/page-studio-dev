@@ -1,4 +1,4 @@
-const STATES=new Set(['VERIFIED','UNVERIFIED','NOT_APPLICABLE']);
+const STATES=new Set(['VERIFIED','UNVERIFIED','DISPROVEN','NOT_APPLICABLE']);
 const REQUIRED_EVIDENCE=['channel_eligibility','search_intent_fit','revenue_rate','traffic_requirement','operating_cost','legal_policy','dependency_resilience','worst_case_viability','kill_rule'];
 
 function integer(value,name,{min=0,max=Number.MAX_SAFE_INTEGER}={}){
@@ -17,6 +17,7 @@ export function evaluateBusinessModelCandidate(model){
   if(model.requires_manual_customer_fulfillment===true)rejectionReasons.push('MANUAL_CUSTOMER_FULFILLMENT_FORBIDDEN');
   if(automation<9000)rejectionReasons.push('AUTOMATION_RATIO_BELOW_90_PERCENT');
   if(maintenance>2)rejectionReasons.push('ONGOING_MANUAL_LOAD_TOO_HIGH');
+  for(const key of REQUIRED_EVIDENCE)if(evidence[key]==='DISPROVEN')rejectionReasons.push(`${key.toUpperCase()}_DISPROVEN`);
   if(rejectionReasons.length)return {...model,decision:'REJECT',rejection_reasons:rejectionReasons,blockers:[]};
   const blockers=REQUIRED_EVIDENCE.filter(key=>evidence[key]!=='VERIFIED').map(key=>`${key.toUpperCase()}_UNVERIFIED`);
   if(!Array.isArray(model.economic_scenarios)||model.economic_scenarios.length!==3)blockers.push('THREE_ECONOMIC_SCENARIOS_REQUIRED');
