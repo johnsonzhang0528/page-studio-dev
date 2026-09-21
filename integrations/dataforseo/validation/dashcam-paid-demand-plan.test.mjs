@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildDashcamPaidDemandPlan} from '../lib/dashcam-paid-demand-plan.mjs';
+import {validateKeywordOverviewRequest} from '../lib/dataforseo-contract.mjs';
+import {validateSerpLiveAdvancedRequest} from '../lib/dataforseo-serp-contract.mjs';
 
 const source={mode:'FREE_SERP_COMMERCIAL_REVIEW',decision:'PROPOSE_BOUNDED_PAID_DEMAND_CHECK',paid_research_authorized:false,candidate_id:'TW-083'};
 const now=Date.parse('2026-09-20T17:15:00Z');
@@ -11,6 +13,8 @@ test('plan binds exactly five keywords and three shallow SERPs',()=>{
   assert.equal(out.serp_task_count,3);
   assert.equal(out.request_count,4);
   assert.ok(out.requests.slice(1).every(row=>row.body.depth===10));
+  assert.equal(validateKeywordOverviewRequest(out.requests[0].body).ok,true);
+  assert.ok(out.requests.slice(1).every(row=>validateSerpLiveAdvancedRequest(row.body).ok));
 });
 
 test('official current pricing produces an exact hard maximum',()=>{

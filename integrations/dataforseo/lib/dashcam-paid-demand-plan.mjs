@@ -10,8 +10,8 @@ export function buildDashcamPaidDemandPlan(review,{now=Date.now()}={}){
   if(review?.mode!=='FREE_SERP_COMMERCIAL_REVIEW'||review?.decision!=='PROPOSE_BOUNDED_PAID_DEMAND_CHECK'||review?.paid_research_authorized!==false)throw new Error('VERIFIED_FREE_SERP_REVIEW_REQUIRED');
   if(now<Date.parse(PRICING.captured_at)||now>=Date.parse(PRICING.expires_at))throw new Error('PRICE_SNAPSHOT_NOT_CURRENT');
   const requests=[
-    {id:'DASH-KW-001',capability:'keyword_overview',route:'/v3/dataforseo_labs/google/keyword_overview/live',body:{keywords:KEYWORDS,location_code:2158,language_code:'zh-TW',include_serp_info:false,include_clickstream_data:false,tag:'seo-os-dashcam-demand-v1'},maximum_cost_microusd:PRICING.keyword_task_microusd+KEYWORDS.length*PRICING.keyword_item_microusd},
-    ...SERP_KEYWORDS.map((keyword,index)=>({id:`DASH-SERP-00${index+1}`,capability:'serp_live_advanced',route:'/v3/serp/google/organic/live/advanced',body:{keyword,location_code:2158,language_code:'zh-TW',depth:10,device:'desktop',os:'windows'},maximum_cost_microusd:PRICING.serp_live_page_microusd}))
+    {id:'DASH-KW-001',capability:'keyword_overview',route:'/v3/dataforseo_labs/google/keyword_overview/live',body:{keywords:KEYWORDS,location_code:2158,language_code:'zh-TW',include_clickstream_data:false,tag:'seo-os-dashcam-demand-v1'},maximum_cost_microusd:PRICING.keyword_task_microusd+KEYWORDS.length*PRICING.keyword_item_microusd},
+    ...SERP_KEYWORDS.map((keyword,index)=>({id:`DASH-SERP-00${index+1}`,capability:'serp_live_advanced',route:'/v3/serp/google/organic/live/advanced',body:{keyword,location_code:2158,language_code:'zh-TW',depth:10,device:'desktop',os:'windows',tag:`dfs-serp-calibration-${String(index+1).padStart(2,'0')}`},maximum_cost_microusd:PRICING.serp_live_page_microusd}))
   ];
   const maximumCost=requests.reduce((sum,row)=>sum+row.maximum_cost_microusd,0);
   const bound={schema_version:1,market:'Taiwan',language:'zh-TW',candidate_id:review.candidate_id,requests,pricing:PRICING,maximum_cost_microusd:maximumCost};
