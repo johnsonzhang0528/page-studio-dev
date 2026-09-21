@@ -83,6 +83,44 @@ export class DurableSpendLedger {
     });
   }
 
+  /**
+   * Close out an UNKNOWN_HOLD using human-verified provider billing evidence.
+   *
+   * This is the ONLY sanctioned exit from UNKNOWN_HOLD, and it never rewrites history:
+   * the original status is preserved under `reconciliation.original_status` and the
+   * lease id is unchanged, so an auditor can still see that the hold occurred.
+   * Reconciliation is a human act, so an actor, a method and a provider-verified
+   * amount are all required. It is idempotent: a second call is a no-op.
+   */
+  async reconcileUnknownHold(leaseId, {provider_billed, reconciled_amount_microusd, actor, method, confirmed_at, evidence} = {}) {
+    if (typeof provider_billed !== 'boolean') throw new Error('RECONCILE_BILLED_FLAG_REQUIRED');
+    if (!Number.isSafeInteger(reconciled_amount_microusd) || reconciled_amount_microusd < 0) throw new Error('RECONCILE_AMOUNT_INVALID');
+    if (provider_billed === false && reconciled_amount_microusd !== 0) throw new Error('RECONCILE_NOT_BILLED_MUST_BE_ZERO');
+    if (provider_billed === true && reconciled_amount_microusd === 0) throw new Error('RECONCILE_BILLED_MUST_BE_NONZERO');
+    if (typeof actor !== 'string' || !actor.trim()) throw new Error('RECONCILE_ACTOR_REQUIRED');
+    if (typeof method !== 'string' || !method.trim()) throw new Error('RECONCILE_METHOD_REQUIRED');
+    return this.#mutate(records => {
+      const record = this.#find(records, leaseId);
+      if (record.reconciliation) return {result: {...record, deduplicated: true}, changed: false};
+      if (record.status !== 'UNKNOWN_HOLD') throw new Error(`INVALID_TRANSITION:${record.status}->RECONCILED`);
+      record.reconciliation = {
+        original_status: 'UNKNOWN_HOLD',
+        provider_billed,
+        reconciled_amount_microusd,
+        actor,
+        method,
+        confirmed_at: confirmed_at ?? new Date().toISOString(),
+        reconciled_at: new Date().toISOString(),
+        ...(evidence ? {evidence} : {})
+      };
+      record.actual_microusd = reconciled_amount_microusd;
+      record.cost_variance_ratio = record.reserved_microusd === 0 ? 0 : (reconciled_amount_microusd - record.reserved_microusd) / record.reserved_microusd;
+      // Not billed => provider never charged us, so this lease must consume no budget.
+      record.status = provider_billed ? 'SETTLED' : 'REJECTED';
+      return {result: {...record, deduplicated: false}, changed: true};
+    });
+  }
+
   async markUnknown(leaseId) {
     return this.#mutate(records => {
       const record = this.#find(records, leaseId);
