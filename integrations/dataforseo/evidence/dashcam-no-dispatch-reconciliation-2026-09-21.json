@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "incident_time": "2026-09-21T10:53:20+08:00",
+  "lease_id": "867393b36138ca21c7ba659de24fec69ef6876058ffd5e47b6dad238c55847a1",
+  "reason": "SERVICE_CRASHED_BEFORE_LISTENER",
+  "provider_usage_observation": {
+    "provider": "DataForSEO Labs API",
+    "observed_at": "2026-09-21",
+    "finding": "No task exists near 10:53 Asia/Taipei; visible records jump from 11:09 on 2026-09-21 to 18:06 on 2026-09-20.",
+    "screenshot_sha256": "90dd73a124e54a447456e9acc626f6a3b2aa069dd272e83f4086f06c9c603ac1"
+  },
+  "runtime_evidence": {
+    "egress_failure": "SERP_CANARY_EXPIRY_INVALID before listener startup",
+    "provider_task_id": null,
+    "provider_receipt": null,
+    "confirmed_cost_microusd": 0
+  }
+}
