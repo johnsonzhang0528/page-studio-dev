@@ -11,7 +11,7 @@ import {dispatchBalancedKeywordIdeas} from '../lib/balanced-calibration-dispatch
 
 const seeds=['網站架設','SEO','記帳軟體','空氣清淨機','日本自由行','英文學習'];
 const requests=buildSeedDiscoveryPlan(seeds).map(item=>item.request);
-const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.json',import.meta.url),'utf8'));
+const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.test-snapshot.json',import.meta.url),'utf8'));
 
 test('balanced batch binds six ordered one-seed tasks and trusted total cost',()=>{
   const result=validateBalancedKeywordIdeasBatch(requests);

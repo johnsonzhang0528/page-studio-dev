@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {buildCandidateExpansionPlan} from '../lib/candidate-expansion-plan.mjs';
 
 const seeds=['網站架設','SEO','記帳軟體','空氣清淨機','日本自由行','英文學習'];
-const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.json',import.meta.url),'utf8'));
+const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.test-snapshot.json',import.meta.url),'utf8'));
 const selected=[9,10,8,5,6,9];
 const shadow={mode:'offline_quality_shadow',network_dispatch:false,quality:{per_seed:Object.fromEntries(seeds.map((seed,index)=>[seed,{selected:selected[index]}]))}};
 const args={shadow,seeds,registry,source_shadow_sha256:'a'.repeat(64),now:Date.parse('2026-09-15T00:00:00Z')};

@@ -8,7 +8,7 @@ import {estimateSerpLiveAdvancedMicrousd} from '../lib/provider-registry.mjs';
 import {BillingGateway} from '../lib/billing-gateway.mjs';
 
 const request={keyword:'免費架設網站',location_code:2158,language_code:'zh-TW',device:'desktop',os:'windows',depth:10,tag:'dfs-serp-calibration-01'};
-const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.json',import.meta.url)));
+const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.test-snapshot.json',import.meta.url)));
 const policy=JSON.parse(fs.readFileSync(new URL('../deploy/dataforseo-egress-policy.serp-canary.json',import.meta.url)));
 policy.expires_at=new Date(Date.now()+10*60*1000).toISOString();
 test('SERP contract rejects paid options, operators, wrong market and depth',()=>{

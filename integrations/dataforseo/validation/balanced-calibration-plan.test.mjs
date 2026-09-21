@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {buildBalancedCalibrationApprovalPlan} from '../lib/balanced-calibration-plan.mjs';
 
 const seeds=JSON.parse(fs.readFileSync(new URL('../fixtures/taiwan-zhtw-calibration-seeds.json',import.meta.url),'utf8'));
-const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.json',import.meta.url),'utf8'));
+const registry=JSON.parse(fs.readFileSync(new URL('../fixtures/provider-registry.test-snapshot.json',import.meta.url),'utf8'));
 
 test('plan is deterministic, offline and produces an exactly scoped approval template',()=>{
   const first=buildBalancedCalibrationApprovalPlan({seeds,registry,now:0}),second=buildBalancedCalibrationApprovalPlan({seeds,registry,now:0});

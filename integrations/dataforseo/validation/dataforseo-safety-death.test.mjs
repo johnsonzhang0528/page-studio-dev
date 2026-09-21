@@ -8,7 +8,7 @@ import {validateProviderRegistry} from '../lib/provider-registry.mjs';
 import {SpendReservations} from '../lib/spend-reservations.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const registry = JSON.parse(fs.readFileSync(path.join(root,'fixtures','provider-registry.json'),'utf8'));
+const registry = JSON.parse(fs.readFileSync(path.join(root,'fixtures','provider-registry.test-snapshot.json'),'utf8'));
 const request = {keyword:'seo 工具', location_code:2158, language_code:'zh-TW', device:'desktop', os:'windows', depth:10, tag:'serp-001'};
 
 test('SERP contract accepts only bounded Standard task route', () => {
